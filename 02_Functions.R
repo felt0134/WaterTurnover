@@ -116,7 +116,7 @@ load_et_by_filepath<-function(x,process){
 
 
 #-----------------------------------------------
-# ET figure function --------
+# ET figure function (NEEDS WORK) --------
 
 # Update projection
 
@@ -182,7 +182,7 @@ get_region_biomass<-function(region){
 
 
 #-----------------------------------------------
-# fix grid (X2 check if used)  ------
+# fix grid  ------
 
 #Get the EASE grid to a regular grid. outputs a raster
 #do this after converting to a dataframe 
@@ -249,6 +249,7 @@ biome_resample<-function(region_shapefile,region_raster,et_raster){
 
 #mexico wood density = 0.68
 
+#------------------------------------------------
 # create spatiotemporal dataframe of wood water storage and T for each region----
 get_regional_turnover<-function(region,x){
   
@@ -542,7 +543,7 @@ le_to_cumulative_monthly_mm<-function(x){
   
 }
 #------------------------------------------------
-# Plot maps of water turnover--------
+# Plot maps of water turnover (NEEDS WORK)--------
 
 plot_turnover<-function(x,y,title,range.x){
   
@@ -563,120 +564,6 @@ plot_turnover<-function(x,y,title,range.x){
   
   
 }
-#------------------------------------------------
-# Get biome turover------
-get_biome_turnover_from_water_content<-function(region,x){
-  
-  turnover.list<-list() 
-  ncpath_9_km_2015_2017_smap_enhanced <- "./../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
-  et_9km_monthly_2002_2017_length <- dir(ncpath_9_km_2015_2017_smap_enhanced, full.names = T)
-  
-  for(i in et_9km_monthly_2002_2017_length[x]){
-    
-    # Get ET data
-    et.data.9km<-load_et_by_filepath(x=et_9km_monthly_2002_2017_length[1],process = "SMAPcanopy_transpiration")
-    
-    # Try to normalize the EASE grid
-    et.data.9km<-fix_grid(et.data.9km)
-    #plot(et.data.9km)
-    
-    # #wood density database
-    # data('wdData')
-    # density_region_mean<-aggregate(wd ~ region,mean,data=wdData)
-    # 
-    # #shapefile data source
-    # data(wrld_simpl)
-    
-    if(region =='temperate_grasslands'){
-      
-      #get water content data
-      wc<-read.csv('./../../Data/Derived_data/Biome_Water_Content/Temperate Grasslands, Savannas & Shrublands.csv')
-      wc<-mean(wc$average.water.content)
-      wc<-round(wc,2)
-      
-      #upload region shapefile and raster
-      
-      shapefile<-raster('./../../Data/Derived_data/Biome_Distributions/Temperate Grasslands, Savannas & Shrublands.tif')
-      shapefile<-rasterToPolygons(shapefile)
-      region.raster<-raster('./../../Data/Derived_data/Biomass/Region/Temperate_Grasslands_Savannas_Shrublands_AGB.tif')
-      
-      #Canopy Transpiration
-      ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
-      #head(ET)
-      #plot(rasterFromXYZ(Mexico_ET))
-      
-      #now get Biomass
-      region_biomass<-rasterToPoints(region.raster)
-      region_biomass<-data.frame(region_biomass)
-      #head(mexico_biomass)
-      
-      #re-scale
-      region_biomass$Temperate_Grasslands_Savannas_Shrublands_AGB <- 0.1*region_biomass$Temperate_Grasslands_Savannas_Shrublands_AGB
-      region_biomass$AGB<-region_biomass$Temperate_Grasslands_Savannas_Shrublands_AGB
-      
-    }else if(region==xxx){}
-    
-    #these data are in mega grams per hectare
-    
-    #1000000 grams = 1 megagram
-    region_biomass$AGB<-(region_biomass$AGB)*1000000
-    
-    #1 hectare = 10000 square meters
-    region_biomass$AGB<-(region_biomass$AGB)/10000
-    region_biomass$AGB<-round(region_biomass$AGB,2)
-    # now it is in g/m^2
-    
-    #calculate water content (wc in is in grams of water per grams of dry biomass)
-    region_biomass$plant_water_grams_m2<- wc*region_biomass$AGB
-    region_biomass$plant_water_grams_m2<-round(region_biomass$plant_water_grams_m2,2)
-    
-    #convert to mm in depth per m^2
-    
-    # The logic:
-    #   
-    # 1 gram = 1 ml = 1000 mm^3
-    # That is a volume
-    # 1 m^2=1000000 mm^2 = 1000mm*1000mm
-    # Volume = Length*Width*Height
-    # Therefore
-    # 1000 mm3 volume = 1000 length*1000width*XXHeight
-    # 1000/1000000 = .001 mm of water on a m2
-    
-    region_biomass$plant_water_mm<-region_biomass$plant_water_grams_m2*0.001
-    region_biomass$plant_water_mm <- round(region_biomass$plant_water_mm,2)
-    
-    # remove excess files from memory
-    rm(region.raster,shapefile,et.data.9km,density_region_mean)
-    
-    #merge with ET data
-    region_biomass_water_transpiration<-merge(region_biomass,ET,by=c('x','y'))
-    
-    rm(ET,region_biomass)
-    
-    #get rid of excess colums
-    region_biomass_water_transpiration<-region_biomass_water_transpiration[c(1,2,6,7)]
-    
-    #rename columns
-    colnames(region_biomass_water_transpiration) <-c('x','y','water_storage_mm_m2','canopy_transpiration_mm_m2')
-    
-    #convert latent energy to mm
-    region_biomass_water_transpiration<-aggregate(canopy_transpiration_mm_m2~x+y+water_storage_mm_m2,
-                                                  le_to_cumulative_monthly_mm,data=region_biomass_water_transpiration)
-    
-    #filter our zero values
-    region_biomass_water_transpiration <- region_biomass_water_transpiration %>%
-      dplyr::filter(water_storage_mm_m2 > 0)
-    
-    #store in list
-    turnover.list[[i]] <- region_biomass_water_transpiration
-    
-  }
-  
-  return(turnover.list)
-  
-}
-
-
 #------------------------------------------------
 # Get land cover turnover ------
 get_land_cover_turnover_from_water_content<-function(region,x,veg){
@@ -926,14 +813,7 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
 
 
 #------------------------------------------------
-# plot turnover maps # 2------
-
-#in progress
-
-
-
-#------------------------------------------------
-# color bar -----
+# color bar (NEEDS WORK) -----
 
 # function for color bar legend in maps
 color.bar <- function(lut, min, max=-min, nticks=11, ticks=seq(min, max, len=nticks), ticLABS=NULL,title='') {
@@ -963,6 +843,9 @@ cv <- function(x){
 
 #------------------------------------------------
 #get 2016 annual turnover data -----
+
+#estimates the turnover time for 2016 by water storage by 
+# dividing cumulative annual canopy transpiration 
 
 get_2016_annual_turnover<-function(vegetation,wc){
   
