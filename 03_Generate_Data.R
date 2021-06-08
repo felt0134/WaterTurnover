@@ -1,0 +1,333 @@
+
+# generate key derived datasets needed to estimate turnover
+
+# Aggregate Global Biomass Data for year 2010 ----------------------------------------
+
+#upload original
+aboveground_biomass <- raster('./../../Data/Biomass/Global_Maps_C_Density_2010_1763/data/aboveground_biomass_carbon_2010.tif')
+#plot(aboveground_biomass)
+
+#aggregate 30X to match resolution of canopy trasnpiration data
+aboveground_biomass_30x_aggregate <- raster::aggregate(aboveground_biomass,fact=30)
+#plot(aboveground_biomass_30x_aggregate)
+
+#save to file
+writeRaster(aboveground_biomass_30x_aggregate,'./../../Data/Derived_Data/Biomass/aboveground_biomass_aggregate_30X.tif')
+#-------------------------------------------------------------------------------
+# Create land cover rasters and save them to the derived data folder------
+
+# citation:
+# Liu, Han, et al. "Annual dynamics of global land cover and its long-term changes from 1982 to 2015." 
+# Earth System Science Data 12.2 (2020): 1217-1243.
+
+
+# use most recent year (2015) in the multi-year dataset of landcover
+land_cover <- raster('./../../Data/Land_cover/GLASS-GLC/GLASS-GLC_7classes_2015.tif')
+plot(land_cover)
+unique(land_cover$GLASS.GLC_7classes_2015)
+
+#just do each manually, not that many land cover types
+
+land_cover_df<-rasterToPoints(land_cover)
+land_cover_df <- data.frame(land_cover_df)
+#head(land_cover_df)
+
+#subset # 10 which is number for Cropland
+ten<-subset(land_cover_df,GLASS.GLC_7classes_2015=='10')
+ten.raster<-rasterFromXYZ(ten)
+plot(ten.raster)
+writeRaster(ten.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Cropland.tif')
+
+#subset # 20 which is number for forest
+twenty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='20')
+twenty.raster<-rasterFromXYZ(twenty)
+plot(twenty.raster)
+writeRaster(twenty.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Forest.tif')
+
+#subset # 30 which is number for grassland
+thirty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='30')
+thirty.raster<-rasterFromXYZ(thirty)
+plot(thirty.raster)
+writeRaster(thirty.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Grassland.tif')
+
+#subset # 40 which is number for shrubland
+forty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='40')
+forty.raster<-rasterFromXYZ(forty)
+plot(forty.raster)
+writeRaster(forty.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Shrubland.tif')
+
+#subset # 70 which is number for Tundra
+seventy<-subset(land_cover_df,GLASS.GLC_7classes_2015=='70')
+seventy.raster<-rasterFromXYZ(seventy)
+plot(seventy.raster)
+writeRaster(seventy.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Tundra.tif')
+
+#subset # 90 which is number for barren land
+ninety<-subset(land_cover_df,GLASS.GLC_7classes_2015=='90')
+ninety.raster<-rasterFromXYZ(ninety)
+plot(ninety.raster)
+writeRaster(ninety.raster,'./../../Data/Derived_Data/Land_Cover_Distributions/Barren.tif')
+
+#-------------------------------------------------------------------------------
+# Create land cover aboveground biomass rasters --------
+
+#import the aggregated aboveground biomass data set
+aboveground_biomass <- raster('./../../Data/Derived_data/Biomass/aboveground_biomass_aggregate_30X.tif')
+#plot(aboveground_biomass)
+
+# since not many land cover types, do this manually for each:
+
+# land cover for grasslands
+
+grasslands<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
+#plot(grasslands)
+proj4string(grasslands) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+grasslands_2<-resample(grasslands,aboveground_biomass)
+grasslands.2_abg<-mask(aboveground_biomass,grasslands_2)
+#plot(grasslands.2_abg)
+writeRaster(grasslands.2_abg,'./../../Data/Derived_data/Biomass/Land_Cover/Grasslands.tif')
+
+# land cover for Forests
+
+forest<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
+#plot(forest)
+proj4string(forest) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+forest_2<-resample(forest,aboveground_biomass)
+forest.2_abg<-mask(aboveground_biomass,forest_2)
+#plot(forest.2_abg)
+writeRaster(forest.2_abg,'./../../Data/Derived_data/Biomass/Land_Cover/Forest.tif')
+
+# land cover for Tundra
+
+tundra<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
+#plot(tundra)
+proj4string(tundra) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+tundra_2<-resample(tundra,aboveground_biomass)
+tundra.2_abg<-mask(aboveground_biomass,tundra_2)
+#plot(tundra.2_abg)
+writeRaster(tundra.2_abg,'./../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif')
+
+# land cover for Shrubland
+
+Shrubland<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
+#plot(Shrubland)
+proj4string(Shrubland) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+Shrubland_2<-resample(Shrubland,aboveground_biomass)
+Shrubland.2_abg<-mask(aboveground_biomass,Shrubland_2)
+#plot(Shrubland.2_abg)
+writeRaster(Shrubland.2_abg,'./../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
+
+
+#-------------------------------------------------------------------------------
+# Load in and format TRY leaf water content data -----
+
+#get TRY leaf water content data and merge it with a taxonomy data
+# base that can let us know families of the species
+
+#load original data downloaded from TRY
+water.content.try<-read.delim('./../../Data/water.content.try/14187.txt')
+#head(water.content.try)
+
+#trim down columns
+water.content.try<-water.content.try %>% select(SpeciesName,DatasetID,ObservationID, DataName,OrigValueStr,OrigUnitStr)
+
+#sort data IDs and convert to long form
+water.content.try.water.content <- water.content.try %>%
+  dplyr::filter(DataName=='Leaf water content per leaf dry mass')
+#head(water.content.try.water.content)
+
+#reduce and rename column names
+water.content.try.water.content<-water.content.try.water.content[c(1,2,3,5,6)]
+colnames(water.content.try.water.content) <-c('SpeciesName','DatasetID','ObservationID','water.content','units')
+water.content.try.water.content$water.content<-as.numeric(as.character(water.content.try.water.content$water.content)) #make numeric
+water.content.try.water.content$water.content<-round(water.content.try.water.content$water.content,2) #round 2 decimals
+#summary(water.content.try.water.content)
+
+#get latitude
+water.content.try.lat <- water.content.try %>%
+  dplyr::filter(DataName=='Latitude')
+head(water.content.try.lat)
+
+#reduce and rename column names
+water.content.try.lat<-water.content.try.lat[c(1,2,3,5)]
+colnames(water.content.try.lat) <-c('SpeciesName','DatasetID','ObservationID','Latitude')
+
+#get rid of odd 212 site (maybe add later)
+water.content.try.lat.no212 <- water.content.try.lat %>%
+  dplyr::filter(!DatasetID =='212')
+head(water.content.try.lat.no212)
+
+# #fix up latitude to get ready for conversion to DCMs
+# water.content.try.lat$Latitude <- gsub('\xb011','d',water.content.try.lat$Latitude)
+# water.content.try.lat$Latitude.test<-char2dms("51d'41?N")
+# water.content.try.lat$Latitude <- gsub('?','\"',water.content.try.lat$Latitude)
+
+#get longitude
+water.content.try.lon <- water.content.try %>%
+  dplyr::filter(DataName=='Longitude')
+#head(water.content.try.lon)
+
+#reduce and rename column names
+water.content.try.lon<-water.content.try.lon[c(1,2,3,5)]
+colnames(water.content.try.lon) <-c('SpeciesName','DatasetID','ObservationID','Longitude')
+
+#get rid of odd 212 site (maybe add later)
+water.content.try.lon.no212 <- water.content.try.lon %>%
+  dplyr::filter(!DatasetID =='212')
+#head(water.content.try.lon.no212)
+
+#bind the lat and lon
+lat.lon.no.212<-merge(water.content.try.lon.no212,water.content.try.lat.no212,by=c('DatasetID','ObservationID','SpeciesName'))
+#head(lat.lon.no.212)
+
+#merge with water content
+lat.lon.no.212.water.content<-merge(lat.lon.no.212,water.content.try.water.content,by=c('DatasetID','ObservationID','SpeciesName'))
+#head(lat.lon.no.212.water.content)
+
+# re-order and rename columns
+col_order <- c("Longitude", "Latitude",'SpeciesName', "water.content",
+               "units", "DatasetID",'ObservationID')
+lat.lon.no.212.water.content<- lat.lon.no.212.water.content[, col_order]
+colnames(lat.lon.no.212.water.content)<-c("x", "y",'SpeciesName', "water.content",
+                                          "units", "DatasetID",'ObservationID')
+#head(lat.lon.no.212.water.content)
+
+#get family names
+
+# species <- unique(lat.lon.no.212.water.content$SpeciesName)
+# length(species)
+
+species.list<-list()
+
+for(i in species){
+  
+  test<-tax_name(i,get = c("genus","family","order"))
+  species.list[[i]] <- data.frame(test)
+  
+}
+
+species_df <- do.call("rbind", species.list)
+
+colnames(species_df) <- c('db','SpeciesName','genus','family', 'order')
+#head(species_df)
+
+#merge them
+species_water_content_merge<-merge(lat.lon.no.212.water.content,species_df,by=c('SpeciesName'))
+
+#save this
+write.csv(species_water_content_merge,'./../../Data/water.content.try/water_content_taxonomy_global_dataset.csv')
+
+# done
+
+
+#-------------------------------------------------------------------------------
+# Get leaf water content data for grassland land cover (NEEDS WORK) ---------
+
+# get leaf water content estimates for the grassland land cover
+
+# to do:
+
+# Will need to combine the POA filtered data frame with the dataframes for other
+# families that have been double checked to see whether the family or species is herbaceous
+
+#set projection
+projection <- '+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0'
+
+# derived_wc<-read.csv('./../../Data/water.content.try/derived.dataset.csv')
+derived_wc<-read.csv('./../../Data/water.content.try/water_content_taxonomy_global_dataset.csv')
+
+#
+
+#if you want to filter just to poacaea
+derived_wc_poa<-subset(derived_wc,family==c('Poaceae'))
+mean(derived_wc_poa$water.content)
+hist(derived_wc_poa$water.content)
+length(derived_wc_poa$water.content)
+
+#if you want to get all herbs
+herb_family<-read.csv('./../../Data/water.content.try/family.list.2.csv')
+#unique(herb_family$notes)
+# herb_family<-subset(herb_family,Herb.=='Yes')
+# family.list <- unique(herb_family$family)
+
+#if you want to look at the 'mostly herb' species
+herb_family<-subset(herb_family,notes=='mostly_herb')
+family.list <- unique(herb_family$family)
+
+herbs.list <- list()
+
+for(i in family.list){
+  
+  herbs<-subset(derived_wc,family==i)
+  herbs.list[[i]] <- herbs
+  
+}
+
+herbs.list.df <- do.call("rbind",herbs.list)
+#unique(herbs.list.df$SpeciesName)
+#about 700 more observations than just poa
+
+#create and save a list of mostly 'herb species' to X2 check which species are herb
+mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
+colnames(mostly.herb.list) <- 'Species'
+write.csv(mostly.herb.list,'./../../Data/Derived_Data/Land_Cover_Water_Content/mostly_herb_X2_check.csv')
+
+
+#take the means of each coordinate and turn into raster (do this once)
+#derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc)
+
+#just poa
+#derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc_poa)
+
+#all herb or mostly herb (depends whats upstream of this)
+derived_wc_mean<-aggregate(water.content~x+y,mean,data=herbs.list.df)
+
+#all mostly herbs
+
+est_fix_wc_grid<-fix_grid(derived_wc_mean)
+proj4string(est_fix_wc_grid) <- CRS(projection)
+
+grasslands<-raster('./../../Data/Derived_Data/Land_Cover_Distributions/Grassland.tif')
+
+#get into the same projection
+proj4string(grasslands) <- CRS(projection)
+
+#resample so can align
+resample_test<-resample(grasslands,est_fix_wc_grid)
+
+plot(resample_test)
+plot(est_fix_wc_grid)
+
+#turn into data frame and merge
+biome_raster_df<-data.frame(rasterToPoints(resample_test))
+est_fix_wc_grid_df<-data.frame(rasterToPoints(est_fix_wc_grid))
+
+test_merge<-merge(biome_raster_df,est_fix_wc_grid_df,by=c('x','y'))
+test_merge <-test_merge[c(1,2,4)]
+colnames(test_merge) <- c('x','y','average.water.content')
+test_merge$average.water.content <- round(test_merge$average.water.content,2)
+hist(test_merge$average.water.content)
+summary(test_merge)
+
+#save as csv
+
+#just poa
+#write.csv(test_merge,'./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
+
+#all herb
+# write.csv(test_merge,'./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
+
+# all 'mostly herb' 
+write.csv(test_merge,'./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
+
+#compare
+poa<-read.csv('./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
+summary(poa)
+
+#all herb
+all_herb<-read.csv('./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
+summary(all_herb)
+
+#mostly herb
+mostly_herb<-read.csv('./../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
+summary(mostly_herb)
