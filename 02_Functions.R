@@ -139,7 +139,7 @@ plot_et <- function(x,y,title,range.x){
   #plot(mean_mm_raster_2)
   
   
-  # png(file='./../../Figures/preliminary/my_first_figure.png',
+  # png(file='./../../../Figures/preliminary/my_first_figure.png',
   #     width=1500,height=1200,res=150)
   
   # Plot it
@@ -261,7 +261,7 @@ get_year_month_column_smap_et_9km<-function(data){
                 '', data$id)
   #head(transp_monthly_9km_2015_2017_smap_enhanced)
   
-  data$id<-gsub('./../../Data/','', data$id)
+  data$id<-gsub('./../../../Data/','', data$id)
   
   # get year
   data$year <- substr(data$id, 1, 4)
@@ -314,7 +314,7 @@ plot_turnover<-function(x,y,title,range.x){
 get_land_cover_turnover_from_water_content<-function(region,x,veg){
   
   turnover.list<-list() 
-  ncpath_9_km_2015_2017_smap_enhanced <- "./../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
+  ncpath_9_km_2015_2017_smap_enhanced <- "./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
   et_9km_monthly_2002_2017_length <- dir(ncpath_9_km_2015_2017_smap_enhanced, full.names = T)
   
   for(i in et_9km_monthly_2002_2017_length[x]){
@@ -338,13 +338,13 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
       #get water content data
       
       #just poa
-      #wc<-read.csv('./../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content.csv')
+      #wc<-read.csv('./../../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content.csv')
       
       #all herb
-      # wc<-read.csv('./../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
+      # wc<-read.csv('./../../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
       
       #mostly herb
-      wc<-read.csv('./../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
+      wc<-read.csv('./../../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
       
       wc<-mean(wc$average.water.content)
       wc<-round(wc,2)
@@ -353,11 +353,11 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
       
       #upload region shapefile and raster
       
-      shapefile<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
+      shapefile<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
       shapefile<-rasterToPolygons(shapefile)
       
       #biomass raster
-      region.raster<-raster('./../../Data/Derived_data/Biomass/Land_Cover/Grasslands.tif')
+      region.raster<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Grasslands.tif')
       
       #Canopy Transpiration
       ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
@@ -382,11 +382,11 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
       
       #upload region shapefile and raster
       
-      shapefile<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
+      shapefile<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
       shapefile<-rasterToPolygons(shapefile)
       
       #biomass raster
-      region.raster<-raster('./../../Data/Derived_data/Biomass/Land_Cover/Forest.tif')
+      region.raster<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Forest.tif')
       
       #Canopy Transpiration
       ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
@@ -411,16 +411,16 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
       wd <- round(wd,2)
       
       #get water content data
-      wc<-read.csv('./../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content.csv')
+      wc<-read.csv('./../../../Data/Derived_data/Land_Cover_Water_Content/grassland_water_content.csv')
       wc<-mean(wc$average.water.content)
       wc<-round(wc,2)
       
       #upload region shapefile and raster
-      shapefile<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
+      shapefile<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
       shapefile<-rasterToPolygons(shapefile)
       
       #biomass raster
-      region.raster<-raster('./../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif')
+      region.raster<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif')
       
       #Canopy Transpiration
       ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
@@ -446,11 +446,11 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
       
       #upload region shapefile and raster
       
-      shapefile<-raster('./../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
+      shapefile<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
       shapefile<-rasterToPolygons(shapefile)
       
       #biomass raster
-      region.raster<-raster('./../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
+      region.raster<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
       
       #Canopy Transpiration
       ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
@@ -602,15 +602,15 @@ get_2016_annual_turnover<-function(vegetation,wc){
     
     if(wc=='mean'){
       
-      outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
+      outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
       
     }else if(wc=='low'){
       
-      outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_3/") 
+      outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_3/") 
       
     }else if(wc=='high'){
       
-      outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_4/") 
+      outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_4/") 
       
     }
     
@@ -682,7 +682,7 @@ get_2016_CV_turnover<-function(vegetation){
     
     ecoregion <- regions[i]
     #ecoregion <- 'Grasslands'
-    outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
+    outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
     ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
     region.list <- list()
     

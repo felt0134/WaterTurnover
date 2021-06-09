@@ -24,7 +24,7 @@ for(i in 1:length(regions)){
 
 #make into data frame
 test.grassland<- do.call("rbind", region.list)
-rm(region.list)
+rm(region.list,test)
 
 #-------------------------------------------------------------------------------
 # import forests data ------
@@ -49,7 +49,7 @@ for(i in 1:length(regions)){
 
 #make into data frame
 test.forest<- do.call("rbind", region.list)
-rm(region.list)
+rm(region.list,test)
 
 
 
@@ -62,7 +62,6 @@ regions<-c('Tundra')
 for(i in 1:length(regions)){
   
   ecoregion <- regions[i]
-  #ecoregion <- 'Grasslands'
   outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
   ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
   region.list <- list()
@@ -79,7 +78,7 @@ for(i in 1:length(regions)){
 
 #make into data frame
 test.tundra<- do.call("rbind", region.list)
-rm(region.list)
+rm(region.list,test)
 
 
 #-------------------------------------------------------------------------------
@@ -90,7 +89,7 @@ regions<-c('Shrubland')
 for(i in 1:length(regions)){
   
   ecoregion <- regions[i]
-  outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
+  outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/")
   ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
   region.list <- list()
   
@@ -106,7 +105,7 @@ for(i in 1:length(regions)){
 
 #make into data frame
 test.shrubland<- do.call("rbind", region.list)
-rm(region.list)
+rm(region.list,test)
 
 
 

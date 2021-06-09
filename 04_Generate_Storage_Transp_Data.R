@@ -7,6 +7,8 @@
 file.id<-c(1:25)
 regions<-c('Grasslands') 
 
+#10:21 = all months in year 2016
+
 for(i in file.id[10:21]){
   
   for(j in 1:length(regions)){
@@ -26,14 +28,14 @@ for(i in file.id[10:21]){
     month<-mean(as.numeric(as.character(test$month)))
     
     #just poa WC
-    #outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
+    #outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
     
     # #all herb WC
-    # outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_3/",ecoregion,"_",year,"_",month,".csv")
+    # outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_3/",ecoregion,"_",year,"_",month,".csv")
     # 
     
     #mostly herb WC
-    outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_4/",ecoregion,"_",year,"_",month,".csv")
+    outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/wc_4/",ecoregion,"_",year,"_",month,".csv")
     
     
     write.csv(test, outfile, row.names = F)
@@ -65,7 +67,7 @@ for(i in file.id[10:21]){
     # write to file
     year<-mean(as.numeric(as.character(test$year)))
     month<-mean(as.numeric(as.character(test$month)))
-    outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
+    outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
     write.csv(test, outfile, row.names = F)
     
   }
@@ -88,7 +90,6 @@ for(i in file.id[10:21]){
     ecoregion <- regions[j]
     
     #get data to proper format
-    #test<-get_land_cover_turnover_from_water_content(region="Tundra",x=1,veg='mixed')
     test<-get_land_cover_turnover_from_water_content(region=ecoregion,x=i,veg='mixed')
     test<- do.call("rbind", test)
     test<-get_year_month_column_smap_et_9km(test)
@@ -98,16 +99,13 @@ for(i in file.id[10:21]){
     # write to file
     year<-mean(as.numeric(as.character(test$year)))
     month<-mean(as.numeric(as.character(test$month)))
-    outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
+    outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
     write.csv(test, outfile, row.names = F)
     
   }
   
 }
 
-# test<-get_land_cover_turnover_from_water_content(region='Grasslands',
-#                                                  x=1,
-#                                                  veg='herb')
 
 #-------------------------------------------------------------------------------
 # shrublands ------
@@ -132,7 +130,7 @@ for(i in file.id[10:21]){
     # write to file
     year<-mean(as.numeric(as.character(test$year)))
     month<-mean(as.numeric(as.character(test$month)))
-    outfile <- paste0('./../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
+    outfile <- paste0('./../../../Data/Derived_Data/Regional_water_storage_and_T/Land_Cover/',ecoregion,"/",ecoregion,"_",year,"_",month,".csv")
     write.csv(test, outfile, row.names = F)
     
   }

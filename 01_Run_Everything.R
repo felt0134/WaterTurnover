@@ -25,15 +25,15 @@ source('02_Functions.R')
 #source('04_Generate_Storage_Transp_Data.R')
 
 # Import data
-source('Import_Storage_Transp_Data.R')
+source('05_Import_Storage_Transp_Data.R')
 
 # Summarize data
-source('Summarize_Turnover_Data.R')
+source('06_Summarize_Turnover_Data.R')
 
 # to do:
 
-#need to add another ../ in the file paths as new project is one more step forward
-# than original 
-# finish add land cover types to 06
+
+# Need split up turnover by seasons (4-month chunks) so we can make 4-panel
+# figure showing tunover by seasons across the globe
 
 
