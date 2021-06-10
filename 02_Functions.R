@@ -754,5 +754,152 @@ get_2016_CV_turnover<-function(vegetation){
   
 }
 #------------------------------------------------
+# Get seasonal turnover ----
+
+
+get_seasonal_turnover <- function(test){
+  
+  # Get January - March 
+  
+  jan_march <- test %>%
+    dplyr::filter(month < 4)
+  
+  #summary(jan_march)
+  
+  #get cumulative jan_march T
+  test.jan_march.cumulative.T <- aggregate(canopy_transpiration_mm_m2~x+y + water_storage_mm_m2,sum,data=jan_march)
+  #head(test.jan_march.cumulative.T)
+  
+  # get rid of pixels where T is zero
+  test.jan_march.cumulative.T <- test.jan_march.cumulative.T  %>%
+    dplyr::filter(canopy_transpiration_mm_m2 > 0)
+  
+  #estimate T per day
+  test.jan_march.cumulative.T$canopy_transpiration_mm_m2 <- (test.jan_march.cumulative.T$canopy_transpiration_mm_m2)/90
+  test.jan_march.cumulative.T$canopy_transpiration_mm_m2 <- round(test.jan_march.cumulative.T$canopy_transpiration_mm_m2,2)
+  
+  #estimate jan_march turnover
+  test.jan_march.cumulative.T$turnover <- 
+    (test.jan_march.cumulative.T$water_storage_mm_m2/test.jan_march.cumulative.T$canopy_transpiration_mm_m2)
+  
+  # filter out extreme values
+  high_jan_march<-as.numeric(quantile(test.jan_march.cumulative.T$turnover,probs=c(0.95)))
+  low_jan_march<-as.numeric(quantile(test.jan_march.cumulative.T$turnover,probs=c(0.05)))
+  
+  test.filter.jan.march <- test.jan_march.cumulative.T %>%
+    dplyr::filter(turnover < high_jan_march) %>%
+    dplyr::filter(turnover > low_jan_march)
+  
+  test.filter.jan.march$season <- 'January-March'
+  
+  # April-June
+  
+  # head(test)
+  # summary(test)
+  april_june <- test %>%
+    dplyr::filter(month < 7) %>%
+    dplyr::filter(month > 3)
+  
+  #summary(april_june)
+  
+  
+  #get cumulative april_june T
+  test.april_june.cumulative.T <- aggregate(canopy_transpiration_mm_m2~x+y + water_storage_mm_m2,sum,data=april_june)
+  #head(test.april_june.cumulative.T)
+  
+  # get rid of pixels where T is zero
+  test.april_june.cumulative.T <- test.april_june.cumulative.T  %>%
+    dplyr::filter(canopy_transpiration_mm_m2 > 0)
+  
+  #estimate T per day
+  test.april_june.cumulative.T$canopy_transpiration_mm_m2 <- (test.april_june.cumulative.T$canopy_transpiration_mm_m2)/90
+  test.april_june.cumulative.T$canopy_transpiration_mm_m2 <- round(test.april_june.cumulative.T$canopy_transpiration_mm_m2,2)
+  
+  #estimate april_june turnover
+  test.april_june.cumulative.T$turnover <- 
+    (test.april_june.cumulative.T$water_storage_mm_m2/test.april_june.cumulative.T$canopy_transpiration_mm_m2)
+  
+  # filter out extreme values
+  high_april_june<-as.numeric(quantile(test.april_june.cumulative.T$turnover,probs=c(0.95)))
+  low_april_june<-as.numeric(quantile(test.april_june.cumulative.T$turnover,probs=c(0.05)))
+  
+  test.filter.april_june<- test.april_june.cumulative.T %>%
+    dplyr::filter(turnover < high_april_june) %>%
+    dplyr::filter(turnover > low_april_june)
+  
+  test.filter.april_june$season <- 'April-June'
+  
+  # july-September 
+  
+  # head(test)
+  # summary(test)
+  july_sep <- test %>%
+    dplyr::filter(month < 10) %>%
+    dplyr::filter(month > 6)
+  
+  #get cumulative july_sep T
+  test.july_sep.cumulative.T <- aggregate(canopy_transpiration_mm_m2~x+y + water_storage_mm_m2,sum,data=july_sep)
+  #head(test.july_sep.cumulative.T)
+  
+  # get rid of pixels where T is zero
+  test.july_sep.cumulative.T <- test.july_sep.cumulative.T  %>%
+    dplyr::filter(canopy_transpiration_mm_m2 > 0)
+  
+  test.july_sep.cumulative.T$canopy_transpiration_mm_m2 <- (test.july_sep.cumulative.T$canopy_transpiration_mm_m2)/90
+  test.july_sep.cumulative.T$canopy_transpiration_mm_m2 <- round(test.july_sep.cumulative.T$canopy_transpiration_mm_m2,2)
+  
+  #estimate july_sep turnover
+  test.july_sep.cumulative.T$turnover <- 
+    (test.july_sep.cumulative.T$water_storage_mm_m2/test.july_sep.cumulative.T$canopy_transpiration_mm_m2)
+  
+  # filter out extreme values
+  high<-as.numeric(quantile(test.july_sep.cumulative.T$turnover,probs=c(0.95)))
+  low<-as.numeric(quantile(test.july_sep.cumulative.T$turnover,probs=c(0.05)))
+  
+  test.filter.july_sep <- test.july_sep.cumulative.T %>%
+    dplyr::filter(turnover < high) %>%
+    dplyr::filter(turnover > low)
+  
+  test.filter.july_sep$season <- 'July-September'
+  
+  # Oct- Dec 
+  
+  oct_dec <- test %>%
+    dplyr::filter(month > 9) 
+  
+  #get cumulative oct_dec T
+  test.oct_dec.cumulative.T <- aggregate(canopy_transpiration_mm_m2~x+y + water_storage_mm_m2,sum,data=oct_dec)
+  
+  # get rid of pixels where T is zero
+  test.oct_dec.cumulative.T <- test.oct_dec.cumulative.T  %>%
+    dplyr::filter(canopy_transpiration_mm_m2 > 0)
+  
+  #get daily T
+  test.oct_dec.cumulative.T$canopy_transpiration_mm_m2 <- (test.oct_dec.cumulative.T$canopy_transpiration_mm_m2)/90
+  test.oct_dec.cumulative.T$canopy_transpiration_mm_m2 <- round(test.oct_dec.cumulative.T$canopy_transpiration_mm_m2,2)
+  
+  
+  #estimate oct_dec turnover
+  test.oct_dec.cumulative.T$turnover <- 
+    (test.oct_dec.cumulative.T$water_storage_mm_m2/test.oct_dec.cumulative.T$canopy_transpiration_mm_m2)
+  
+  # filter out extreme values
+  high<-as.numeric(quantile(test.oct_dec.cumulative.T$turnover,probs=c(0.95)))
+  low<-as.numeric(quantile(test.oct_dec.cumulative.T$turnover,probs=c(0.05)))
+  
+  test.filter.oct_dec <- test.oct_dec.cumulative.T %>%
+    dplyr::filter(turnover < high) %>%
+    dplyr::filter(turnover > low)
+  
+  test.filter.oct_dec$season <- 'October-December'
+  
+  rbind_seasons <- rbind(test.filter.oct_dec,test.filter.jan.march,test.filter.april_june,
+                         test.filter.july_sep)
+  
+  
+  return(rbind_seasons)
+  
+  
+}
 
 

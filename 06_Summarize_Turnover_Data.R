@@ -47,7 +47,7 @@ test.filter.cumulative.grasslands <- test.grassland.annual.cumulative.T %>%
 
 rm(test.grassland.annual.cumulative.T)
 
-test.filter.cumulative.grasslands$vegetation <- 'grassland'
+test.filter.cumulative.grasslands$vegetation <- 'Grassland'
 
 #
 #
@@ -200,7 +200,7 @@ annual_turnover_by_vegetation <- rbind(test.filter.cumulative.grasslands,test.fi
 #head(annual_turnover_by_vegetation)
 
 
-plot(rasterFromXYZ(annual_turnover_by_vegetation[c(1,2,5)]),main='Vegetation water turnover (days')
+#plot(rasterFromXYZ(annual_turnover_by_vegetation[c(1,2,5)]),main='Vegetation water turnover (days)')
 
 # need an effective color bar due to high values obscuring interpretation!
 
@@ -237,7 +237,7 @@ grasslands_cv_turnover <- grasslands_cv_turnover %>%
 #summary(grasslands_cv_turnover)
 grasslands_cv_turnover$monthly_turnover <- round(grasslands_cv_turnover$monthly_turnover,2)
 
-plot(rasterFromXYZ(grasslands_cv_turnover))
+#plot(rasterFromXYZ(grasslands_cv_turnover))
 
 grasslands_cv_turnover$vegetation <- 'Grassland'
 
@@ -269,7 +269,7 @@ forests_cv_turnover <- forests_cv_turnover %>%
 #summary(forests_cv_turnover)
 forests_cv_turnover$monthly_turnover <- round(forests_cv_turnover$monthly_turnover,2)
 
-plot(rasterFromXYZ(forests_cv_turnover))
+#plot(rasterFromXYZ(forests_cv_turnover))
 
 forests_cv_turnover$vegetation <- 'Forest'
 
@@ -301,7 +301,7 @@ tundras_cv_turnover <- tundras_cv_turnover %>%
 #summary(tundras_cv_turnover)
 tundras_cv_turnover$monthly_turnover <- round(tundras_cv_turnover$monthly_turnover,2)
 
-plot(rasterFromXYZ(tundras_cv_turnover))
+#plot(rasterFromXYZ(tundras_cv_turnover))
 
 tundras_cv_turnover$vegetation <- 'Tundra'
 
@@ -334,7 +334,7 @@ shrublands_cv_turnover <- shrublands_cv_turnover %>%
 #summary(shrublands_cv_turnover)
 shrublands_cv_turnover$monthly_turnover <- round(shrublands_cv_turnover$monthly_turnover,2)
 
-plot(rasterFromXYZ(shrublands_cv_turnover))
+#plot(rasterFromXYZ(shrublands_cv_turnover))
 
 shrublands_cv_turnover$vegetation <- 'Shrubland'
 
@@ -351,6 +351,28 @@ rm(grasslands_cv_turnover,forests_cv_turnover,
 
 #head(cv_turnover_by_vegetation)
 
-plot(rasterFromXYZ(cv_turnover_by_vegetation[c(1,2,3)]),'CV Vegetation water turnover')
+#plot(rasterFromXYZ(cv_turnover_by_vegetation[c(1,2,3)]),'CV Vegetation water turnover')
 
 
+
+#-------------------------------------------------------------------------------
+# estimate turnover for seasons (four three-month chunks of 2016) -----
+
+
+#[c(1,2,5,6)]
+
+seasonal_grassland <- get_seasonal_turnover(test=test.grassland)
+seasonal_grassland$vegetation <- 'Grassland'
+
+seasonal_forest <- get_seasonal_turnover(test=test.forest)
+seasonal_forest$vegetation <- 'Forest'
+
+seasonal_shrubland <- get_seasonal_turnover(test=test.shrubland)
+seasonal_shrubland$vegetation <- 'Shrubland'
+
+seasonal_tundra <- get_seasonal_turnover(test=test.tundra)
+seasonal_tundra$vegetation <- 'Tundra'
+
+
+seasons_by_vegetation <- rbind(seasonal_grassland,seasonal_forest,
+                               seasonal_shrubland,seasonal_tundra)

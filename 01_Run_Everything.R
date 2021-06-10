@@ -4,12 +4,12 @@ rm(list=ls())
 
 #install packages
 # pkgs <- c("ncdf4", "raster", "rgdal", "reshape2", "sp",'dplyr',
-#           'BIOMASS','maptools','data.table','rstudioapi','taxize')
+#           'BIOMASS','maptools','data.table','rstudioapi','taxize','ggplot2')
 # lapply(pkgs, install.packages, character.only = TRUE) 
 
 #load packages
 pkgs <- c("ncdf4", "raster", "rgdal", "reshape2", "sp",'dplyr',
-          'BIOMASS','maptools','data.table','rstudioapi','taxize')
+          'BIOMASS','maptools','data.table','rstudioapi','taxize','ggplot2')
 lapply(pkgs, library, character.only = TRUE) 
 
 # Set working directory to local directory
