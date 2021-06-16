@@ -478,7 +478,6 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
     region_biomass$AGB<-round(region_biomass$AGB,2)
     # now it is in g/m^2
     
-    
     if(veg =='herb'){
       
       #calculate water content (wc in is in grams of water per grams of dry biomass)
