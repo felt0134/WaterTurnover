@@ -63,7 +63,7 @@ load_et_by_filepath<-function(x,process){
   head(lon.df.melted)
   
   #merge lat and long
-  lat_lon <- merge (lat.df.melted,lon.df.melted,by=c('ID'))
+  lat_lon <- merge(lat.df.melted,lon.df.melted,by=c('ID'))
   #head(lat_lon)
   
   #re-order columns
