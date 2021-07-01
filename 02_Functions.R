@@ -902,3 +902,94 @@ get_seasonal_turnover <- function(test){
 }
 
 
+
+#------------------------------------------------
+# import VOD (converted to VWC) data -----------
+get_vwc <-function(x,y,filepath){
+  
+  april_vector <-c(x:y)
+  april_list<-list()
+  
+  lat_lon <- './../../../Data/VWC/SMAPCenterCoordinates9KM.mat'
+  #h5read(lat_lon, read.attributes = TRUE)
+  lat_lon<-readMat(lat_lon)
+  
+  #lat
+  lat<-lat_lon[1]
+  lat<-as.data.frame(lat)
+  
+  lat$ID <- rownames(lat)
+  lat <- reshape2::melt(lat, id.vars = c("ID"),variable.name = "lat")
+  lat <- lat[c(1,3)]
+  colnames(lat) <- c('ID','y')
+  lat$ID <- rownames(lat)
+  #lat$ID <- as.numeric(as.character(lat$ID))
+  
+  #lon
+  lon<-lat_lon[2]
+  lon<-as.data.frame(lon)
+  
+  lon$ID <- rownames(lon)
+  lon <- reshape2::melt(lon, id.vars = c("ID"),variable.name = "lon")
+  lon <- lon[c(1,3)]
+  colnames(lon) <- c('ID','x')
+  lon$ID <- rownames(lon)
+  #lon$ID <- as.numeric(as.character(lon$ID))
+  
+  lat_lon_df <- merge(lon,lat,by=c('ID'))
+  rm(lat,lon,lat_lon)
+  
+  
+  for(i in april_vector){
+    
+    # read in tau file 
+    tst.2 <-h5read(filepath,"MTDCA_TAU")
+    # dim(tst.2) # 1624 3856   91 (days)
+    # class(tst.2) # array
+    tst.2 <- tst.2[,,c(i)] # subset to day 1
+    
+    
+    #head(tst.2)
+    
+    tst.2<-as.data.frame(tst.2)
+    tst.2 <- reshape2::melt(tst.2,variable.name = "tau")
+    # head(tst.2)
+    # summary(tst.2)
+    # hist(tst.2$value)
+    
+    tst.2$ID <- rownames(tst.2)
+    #head(tst.2)
+    tst.2$vwc <- tst.2$value/0.11
+    tst.2 <- tst.2[c(3,4)]
+    #head(tst.2)
+    
+    #merge with coordinates
+    tst.2 <- merge(lat_lon_df,tst.2,by=c('ID'))
+    tst.2 <- tst.2[c(2,3,4)]
+    
+    #plot(lat_lon_df$x,lat_lon_df$y)
+    
+    tst.2 <- tst.2 %>%
+      dplyr::filter(!vwc=='NaN')
+    #head(vwc.coordinates)
+    #head(vwc.coord.jan1)
+    
+    april_list[[i]]<-tst.2
+    
+  }
+  
+  #make to df
+  april_df <- do.call('rbind',april_list)
+  rm(april_list)
+  #head(april_df)
+  
+  #average across pixels
+  april_ag<-aggregate(vwc~x+y,mean,data=april_df)
+  rm(april_df)
+  #head(april_ag)
+  
+  return(april_ag)
+  
+}
+
+#------------------------------------------------

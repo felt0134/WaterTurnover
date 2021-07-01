@@ -333,3 +333,122 @@ mostly_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/gra
 summary(mostly_herb)
 
 
+
+#-------------------------------------------------------------------------------
+# Import VOD (converted to VWC) monthly data for 2016 ------
+
+
+library(rhdf5)
+library(R.matlab)
+
+#data repo
+#http://afeldman.mit.edu.libproxy.chapman.edu/mt-dca-data
+
+# get month and days
+# h5read('./../../../Data/VWC/MTDCA_V4_TAU_201601_201603_9km.mat',
+#        "DateVector", read.attributes = TRUE)
+
+#January: 1-31
+#February: 32-60
+#March 61-91
+
+
+# January to March
+
+#January
+jan<-get_vwc(x=1,y=31,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201601_201603_9km.mat')
+write.csv(jan,'./../../../Data/Derived_data/VWC/vwc_2016_01.csv')
+rm(jan)
+
+#Feb
+feb<-get_vwc(x=32,y=60,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201601_201603_9km.mat')
+write.csv(feb,'./../../../Data/Derived_data/VWC/vwc_2016_02.csv')
+rm(feb)
+
+#March
+march<-get_vwc(x=61,y=91,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201601_201603_9km.mat')
+write.csv(march,'./../../../Data/Derived_data/VWC/vwc_2016_03.csv')
+rm(march)
+
+##
+
+# April to June
+
+# get month and days
+# h5read('./../../../Data/VWC/MTDCA_V4_TAU_201604_201606_9km.mat',
+#        "DateVector", read.attributes = TRUE)
+
+#April: 1-30
+#May: 31-61
+#June: 62-91
+
+#April
+april<-get_vwc(x=1,y=30,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201604_201606_9km.mat')
+write.csv(april,'./../../../Data/Derived_data/VWC/vwc_2016_04.csv')
+rm(april)
+
+#May
+may<-get_vwc(x=31,y=61,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201604_201606_9km.mat')
+write.csv(may,'./../../../Data/Derived_data/VWC/vwc_2016_05.csv')
+rm(may)
+
+#June
+june<-get_vwc(x=62,y=91,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201604_201606_9km.mat')
+write.csv(june,'./../../../Data/Derived_data/VWC/vwc_2016_06.csv')
+rm(june)
+
+##
+
+# July to September
+
+# get month and days
+# h5read('./../../../Data/VWC/MTDCA_V4_TAU_201607_201609_9km.mat',
+#        "DateVector", read.attributes = TRUE)
+
+#July: 1-31
+#August: 32-62
+#September: 63-92
+
+#July
+july<-get_vwc(x=1,y=31,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201607_201609_9km.mat')
+write.csv(july,'./../../../Data/Derived_data/VWC/vwc_2016_07.csv')
+rm(july)
+
+#August
+august<-get_vwc(x=32,y=62,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201607_201609_9km.mat')
+write.csv(august,'./../../../Data/Derived_data/VWC/vwc_2016_08.csv')
+rm(august)
+
+#September
+september<-get_vwc(x=63,y=92,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201607_201609_9km.mat')
+write.csv(september,'./../../../Data/Derived_data/VWC/vwc_2016_09.csv')
+rm(september)
+
+##
+
+# October December
+
+# get month and days
+# h5read('./../../../Data/VWC/MTDCA_V4_TAU_201610_201612_9km.mat',
+#        "DateVector", read.attributes = TRUE)
+
+#October: 1-31
+#November: 32-61
+#December: 62-92
+
+#October
+october<-get_vwc(x=1,y=31,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201610_201612_9km.mat')
+write.csv(october,'./../../../Data/Derived_data/VWC/vwc_2016_10.csv')
+rm(october)
+
+#November
+november<-get_vwc(x=32,y=61,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201610_201612_9km.mat')
+write.csv(november,'./../../../Data/Derived_data/VWC/vwc_2016_11.csv')
+rm(november)
+
+#December
+december<-get_vwc(x=62,y=92,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201610_201612_9km.mat')
+write.csv(december,'./../../../Data/Derived_data/VWC/vwc_2016_12.csv')
+rm(december)
+
+
