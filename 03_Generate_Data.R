@@ -117,6 +117,16 @@ Shrubland.2_abg<-mask(aboveground_biomass,Shrubland_2)
 #plot(Shrubland.2_abg)
 writeRaster(Shrubland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
 
+# land cover for Cropland
+
+Cropland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Cropland.tif')
+#plot(Cropland)
+proj4string(Cropland) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+Cropland_2<-resample(Cropland,aboveground_biomass)
+Cropland.2_abg<-mask(aboveground_biomass,Cropland_2)
+#plot(Cropland.2_abg)
+writeRaster(Cropland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Cropland.tif')
+
 
 #-------------------------------------------------------------------------------
 # Load in and format TRY leaf water content data -----
@@ -245,42 +255,69 @@ hist(derived_wc_poa$water.content)
 length(derived_wc_poa$water.content)
 
 #if you want to get all herbs
-herb_family<-read.csv('./../../../Data/water.content.try/family.list.2.csv')
-#unique(herb_family$notes)
-# herb_family<-subset(herb_family,Herb.=='Yes')
+# herb_family<-read.csv('./../../../Data/water.content.try/family.list.2.csv')
+# #unique(herb_family$notes)
+# # herb_family<-subset(herb_family,Herb.=='Yes')
+# # family.list <- unique(herb_family$family)
+# 
+# #if you want to look at the 'mostly herb' species
+# herb_family<-subset(herb_family,notes=='mostly_herb')
 # family.list <- unique(herb_family$family)
+# 
+# herbs.list <- list()
+# 
+# for(i in family.list){
+#   
+#   herbs<-subset(derived_wc,family==i)
+#   herbs.list[[i]] <- herbs
+#   
+# }
 
-#if you want to look at the 'mostly herb' species
-herb_family<-subset(herb_family,notes=='mostly_herb')
-family.list <- unique(herb_family$family)
-
-herbs.list <- list()
-
-for(i in family.list){
-  
-  herbs<-subset(derived_wc,family==i)
-  herbs.list[[i]] <- herbs
-  
-}
-
-herbs.list.df <- do.call("rbind",herbs.list)
+#herbs.list.df <- do.call("rbind",herbs.list)
 #unique(herbs.list.df$SpeciesName)
 #about 700 more observations than just poa
 
 #create and save a list of mostly 'herb species' to X2 check which species are herb
-mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
-colnames(mostly.herb.list) <- 'Species'
-write.csv(mostly.herb.list,'./../../../Data/Derived_Data/Land_Cover_Water_Content/mostly_herb_X2_check.csv')
+# mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
+# colnames(mostly.herb.list) <- 'Species'
+#write.csv(mostly.herb.list,'./../../../Data/Derived_Data/Land_Cover_Water_Content/mostly_herb_X2_check.csv')
 
+#after checking which species are truly herbaceous in the mostly_herb_X2_check data frame,
+#now you can load in the X2 checked data frame
+herbx2.list <-read.csv('./../../../Data/water.content.try/mostly_herb_X2_check.csv')
+herbx2.list <- subset(herbx2.list,Herbaceous.=='Yes')
+herbx2.list <- herbx2.list[c(2)]
+
+#now loop through to get X2 checked mostly herb species
+herbx2.list <- unique(herbx2.list$Species)
+
+herbsx2.list <- list()
+
+for(i in herbx2.list){
+  
+  herbs<-subset(derived_wc,SpeciesName==i)
+  herbsx2.list[[i]] <- herbs
+  
+}
+
+herbsx2.list.df <- do.call("rbind",herbsx2.list)
+head(herbsx2.list.df)
 
 #take the means of each coordinate and turn into raster (do this once)
 #derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc)
 
 #just poa
-#derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc_poa)
+derived_wc_mean_poa<-aggregate(water.content~x+y,mean,data=derived_wc_poa)
+head(derived_wc_mean_poa)
 
 #all herb or mostly herb (depends whats upstream of this)
-derived_wc_mean<-aggregate(water.content~x+y,mean,data=herbs.list.df)
+derived_wc_mean_herbs<-aggregate(water.content~x+y,mean,data=herbsx2.list.df)
+head(derived_wc_mean_herbs)
+
+#bind Poa and all other herbaceous species (pixel averages)
+derived_wc_mean <- rbind(derived_wc_mean_poa,derived_wc_mean_herbs)
+
+#STOPPED HERE
 
 #all mostly herbs
 
@@ -318,19 +355,22 @@ summary(test_merge)
 # write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
 
 # all 'mostly herb' 
-write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
+#write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
 
-#compare
-poa<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
-summary(poa)
+# Poa and herb X2 checked
+write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_poa_herbX2.csv')
 
-#all herb
-all_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
-summary(all_herb)
-
-#mostly herb
-mostly_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
-summary(mostly_herb)
+# #compare
+# poa<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
+# summary(poa)
+# 
+# #all herb
+# all_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
+# summary(all_herb)
+# 
+# #mostly herb
+# mostly_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
+# summary(mostly_herb)
 
 
 

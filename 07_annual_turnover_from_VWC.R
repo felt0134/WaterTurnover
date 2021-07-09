@@ -1,11 +1,6 @@
+#combine T and VWC data
 
-#Script to get seansality and intra-annual variability of transit time
-
-#Note: because (I think) of differential availability of data for pixels,
-# monthly pixels have trouble getting converted to aregular grid.
-
-#if not run
-#source('05_Import_Storage_Transp_Data.R')
+source('05_Import_Storage_Transp_Data.R')
 
 #grasslands -----
 
@@ -44,9 +39,7 @@ for(j in ecoregion_dir[1:12]){
 test.vwc<- do.call("rbind", vwc.list)
 rm(vwc.list,test)
 #head(test.vwc)
-
-#Get CV
-test.vwc<-aggregate(vwc~x+y,cv,data=test.vwc)
+test.vwc<-aggregate(vwc~x+y,mean,data=test.vwc)
 #head(test.vwc)
 
 test.vwc<-fix_grid(test.vwc)
@@ -67,95 +60,36 @@ stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
 #plot(stack.test[c(1,2,3)])
 
 transit.grasslands <- stack.test$new
-transit.grasslands.cv.df <- as.data.frame(rasterToPoints(transit.grasslands))
+transit.grasslands.df <- as.data.frame(rasterToPoints(transit.grasslands))
 #summary(transit.grasslands.df)
-#hist(transit.grasslands.cv.df$new)
+#hist(transit.grasslands.df$new)
+
+# #get rid of NAs
+# transit.grasslands.df <- transit.grasslands.df %>%
+#   dplyr::filter(!new=='NA')
 
 
 # filter out extreme values
-high<-as.numeric(quantile(transit.grasslands.cv.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.grasslands.cv.df$new,probs=c(0.05)))
+high<-as.numeric(quantile(transit.grasslands.df$new,probs=c(0.95)))
+low<-as.numeric(quantile(transit.grasslands.df$new,probs=c(0.05)))
 
-transit.grasslands.cv.df <- transit.grasslands.cv.df %>%
+transit.grasslands.df <- transit.grasslands.df %>%
   dplyr::filter(new < high) %>%
   dplyr::filter(new > low)
 
-transit.grasslands.cv.df$Cover <- 'grasslands'
+transit.grasslands.df$Cover <- 'grasslands'
 
-hist(transit.grasslands.cv.df$new)
+hist(transit.grasslands.df$new)
 summary(transit.grasslands.df$new)
 
 #change back to raster to plot
-grassland.cv.transit <- rasterFromXYZ(transit.grasslands.cv.df[c(1,2,3)])
-plot(grassland.cv.transit)
+grassland.transit.annual <- rasterFromXYZ(transit.grasslands.df[c(1,2,3)])
+plot(grassland.transit.annual)
 rm(stack.test,transit.grasslands)
 
 #done 
 
 
-#load in grassland VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  test.vwc<-aggregate(vwc~x+y,mean,data=test)
-  # # test<-test %>%
-  # #   dplyr::select(x,y,vwc)
-  # e<-extent(test[c(1:2)])
-  # r<-raster(e,ncol=500,nrow=500,crs='+proj=longlat +datum=WGS84')
-  # test.vwc<-fix_grid(test)
-  # #plot(test.vwc)
-  # 
-  # test.vwc <- resample(test.vwc,grasslandraster)
-  # vwc.grassland <- mask(test.vwc,grasslandraster)
-  # rm(test.vwc)
-  # 
-  # #try to stack them
-  # stack.test<- raster::stack(vwc.grassland,grasslandraster)
-  # #plot(stack.test)
-  # 
-  # stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-  # #plot(stack.test[c(1,2,3)])
-  # 
-  # transit.grasslands <- stack.test$new
-  # transit.grasslands.df <- as.data.frame(rasterToPoints(transit.grasslands))
-  
-  test.vwc$month <- j
-  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2016_','',test.vwc$month)
-  test.vwc$month <- gsub('.csv','',test.vwc$month)
-  
-  vwc.list[[j]] <- test.vwc
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-#test.vwc$month <- as.numeric(as.character(test.vwc$month))
-head(test.vwc)
-rm(vwc.list,test)
-
-test.vwv.jan.march <- test.vwc %>%
-  dplyr::filter(month < 4)
-
-head(test.vwv.jan.march)
-
-#STOPPED HERE
-
-head(test.vwv.jan.march)
-test.vwv.jan.march <- aggregate(vwc~x+y,mean,data=test.vwv.jan.march)
-test.vwv.jan.march <- fix_grid(test.vwv.jan.march)
-plot(test.vwv.jan.march)
-
-unique(test.vwv.jan.march$month)
-summary(test.vwv.jan.march)
-
-?gsub
 #-------------------------------------------------------------------------------
 #forests ------
 
@@ -543,10 +477,11 @@ merge.test <- merge.test %>%
 
 #convert back to raster
 transit.all.raster <- rasterFromXYZ(merge.test)
+
 crs(transit.all.raster) <-'+proj=longlat +datum=WGS84'
 
 #save global raster
-writeRaster(transit.all.raster,'./../../../Data/Derived_data/VWC/global_transit_2016.tif')
+#writeRaster(transit.all.raster,'./../../../Data/Derived_data/VWC/global_transit_2016.tif')
 
 #plot it out
 summary(transit.all.raster)
