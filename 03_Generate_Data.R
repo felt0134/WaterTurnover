@@ -381,6 +381,8 @@ write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/gras
 library(rhdf5)
 library(R.matlab)
 
+# We are doing December 1 2015 - November 31 2016
+
 #data repo
 #http://afeldman.mit.edu.libproxy.chapman.edu/mt-dca-data
 
@@ -490,5 +492,18 @@ rm(november)
 december<-get_vwc(x=62,y=92,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201610_201612_9km.mat')
 write.csv(december,'./../../../Data/Derived_data/VWC/vwc_2016_12.csv')
 rm(december)
+
+#we also want December 2015:
+
+# get month and days
+h5read('./../../../Data/VWC/MTDCA_V4_TAU_201510_201512_9km.mat',
+       "DateVector", read.attributes = TRUE)
+
+#December
+december_2015<-get_vwc(x=62,y=92,filepath = './../../../Data/VWC/MTDCA_V4_TAU_201510_201512_9km.mat')
+write.csv(december_2015,'./../../../Data/Derived_data/VWC/vwc_2015_12.csv')
+rm(december_2015)
+
+
 
 

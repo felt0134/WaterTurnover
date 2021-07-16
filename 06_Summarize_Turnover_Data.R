@@ -12,9 +12,9 @@
 rownames(test.grassland) <-NULL
 #summary(test.grassland.grassland)
 
-#focus on year 2016
-test.grassland<- test.grassland%>%
-  dplyr::filter(year == 2016)
+# #focus on year 2016
+# test.grassland<- test.grassland%>%
+#   dplyr::filter(year == 2016)
 
 #summary(test.grassland)
 
@@ -37,14 +37,16 @@ test.grassland.annual.cumulative.T <- test.grassland.annual.cumulative.T  %>%
 test.grassland.annual.cumulative.T$cumulative.annual.turnover <- 
   test.grassland.annual.cumulative.T$water_storage_mm_m2/test.grassland.annual.cumulative.T$canopy_transpiration_mm_m2
 
-# filter out extreme values
-high<-as.numeric(quantile(test.grassland.annual.cumulative.T$cumulative.annual.turnover,probs=c(0.95)))
-low<-as.numeric(quantile(test.grassland.annual.cumulative.T$cumulative.annual.turnover,probs=c(0.05)))
+# # filter out extreme values
+# high<-as.numeric(quantile(test.grassland.annual.cumulative.T$cumulative.annual.turnover,probs=c(0.95)))
+# low<-as.numeric(quantile(test.grassland.annual.cumulative.T$cumulative.annual.turnover,probs=c(0.05)))
+# 
+# test.filter.cumulative.grasslands <- test.grassland.annual.cumulative.T %>%
+#   dplyr::filter(cumulative.annual.turnover < high) %>%
+#   dplyr::filter(cumulative.annual.turnover > low)
 
-test.filter.cumulative.grasslands <- test.grassland.annual.cumulative.T %>%
-  dplyr::filter(cumulative.annual.turnover < high) %>%
-  dplyr::filter(cumulative.annual.turnover > low)
-
+#try without outlier removal
+test.filter.cumulative.grasslands <- test.grassland.annual.cumulative.T
 rm(test.grassland.annual.cumulative.T)
 
 test.filter.cumulative.grasslands$vegetation <- 'Grassland'

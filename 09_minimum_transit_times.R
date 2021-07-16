@@ -1,3 +1,4 @@
+# Getting the minimum transit time
 
 source('05_Import_Storage_Transp_Data.R')
 test.transp <- rbind(test.tundra,test.cropland,test.forest,test.grassland,test.shrubland)
@@ -295,7 +296,7 @@ for(i in month_list){
   
   
   test_turnover_function<-get_monthly_turnover_VWC(month=i,
-                                                    land_cover='grassland')
+                                                   land_cover='grassland')
   
   test_turnover_function$month <- i
   

@@ -1072,51 +1072,58 @@ filter_extremes_turnover<-function(df){
 #------------------------------------------------
 # Get seasonal turnover estimates for each land cover for VWC-based turnover----
 
+# unique(test.vwc$month)
+# test.vwc.winte.2r<- test.transp %>%
+#   dplyr::filter(month == c('12','1','2'))
+# unique(test.vwc.winte.2r$month)
+
 get_seasonal_turnover_VWC <- function(season,land_cover){
   
   
   
-  if(season=='jan_march'){
+  if(season=='december_february'){
     
     
     test.vwc<- test.vwc %>%
-      dplyr::filter(month < 4)
+      dplyr::filter(month == c('12','1','2'))
     
     test.transp <- test.transp %>%
-      dplyr::filter(month < 4) 
+      dplyr::filter(month == c('12','1','2')) 
     
     
-  }else if(season=='april_june'){
+  }else if(season=='march_may'){
     
     test.vwc <- test.vwc %>%
-      dplyr::filter(month < 7) %>%
-      dplyr::filter(month > 3)
+      dplyr::filter(month < 5) %>%
+      dplyr::filter(month > 2)
     
     
     test.transp <- test.transp %>%
-      dplyr::filter(month < 7) %>%
-      dplyr::filter(month > 3)
+      dplyr::filter(month < 5) %>%
+      dplyr::filter(month > 2)
     
-  }else if(season=='july_september'){
+  }else if(season=='june_august'){
     
     
     test.vwc <- test.vwc %>%
-      dplyr::filter(month < 10) %>%
-      dplyr::filter(month > 6)
+      dplyr::filter(month < 9) %>%
+      dplyr::filter(month > 5)
     
     test.transp <- test.transp %>%
-      dplyr::filter(month < 10) %>%
-      dplyr::filter(month > 6)
+      dplyr::filter(month < 9) %>%
+      dplyr::filter(month > 5)
     
     
-  }else if(season=='october_december'){
+  }else if(season=='september_november'){
     
     
     test.vwc<- test.vwc %>%
-      dplyr::filter(month > 9) 
+      dplyr::filter(month > 8) %>% 
+      dplyr::filter(month < 12)
     
     test.transp <- test.transp %>%
-      dplyr::filter(month > 9)
+      dplyr::filter(month > 8) %>% 
+      dplyr::filter(month < 12)
     
     
   }else if(season=='xxx'){}
@@ -1133,7 +1140,7 @@ get_seasonal_turnover_VWC <- function(season,land_cover){
   test.vwc <- fix_grid(test.vwc)
   
   #load reference raster
-  transit.all.raster<-raster('./../../../Data/Derived_data/VWC/Global/global_transit_2016.tif')
+  transit.all.raster<-raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
   
   #resample to reference raster
   test.vwc <- resample(test.vwc,transit.all.raster)
@@ -1235,7 +1242,7 @@ get_seasonal_turnover_VWC <- function(season,land_cover){
   
   
   # bound the data by the 1st and 99th percentiles
-  test.vwc <- filter_extremes_turnover(test.vwc)
+  #test.vwc <- filter_extremes_turnover(test.vwc)
   
   return(test.vwc)
   
@@ -1260,3 +1267,252 @@ filter_extremes_turnover_IQR<-function(df){
   
 }
 
+#------------------------------------------------
+# get monthly VWC-based estimates of transit time ------
+
+get_monthly_turnover_VWC <- function(month,land_cover){
+  
+  
+  
+  if(month=='january'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('1'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('1'))
+    
+    
+  }else if(month=='february'){
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('2'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('2'))
+    
+    
+  }else if(month=='march'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('3'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('3'))
+    
+    
+  }else if(month=='april'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('4'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('4'))
+    
+    
+  }else if(month=='may'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('5'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('5'))
+    
+    
+  }else if(month=='june'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('6'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('6'))
+    
+    
+  }else if(month=='july'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('7'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('7'))
+    
+    
+  }else if(month=='august'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('8'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('8'))
+    
+    
+  }else if(month=='september'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('9'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('9'))
+    
+    
+  }else if(month=='october'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('10'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('10'))
+    
+    
+  }else if(month=='november'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('11'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('11'))
+    
+    
+  }else if(month=='december'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('12'))
+    
+    test.transp <- test.transp %>%
+      dplyr::filter(month == c('12'))
+    
+    
+  }
+  
+  
+  # Average across months 
+  test.vwc <-aggregate(vwc~x+y,mean,data=test.vwc)
+  
+  #sum across months
+  test.transp<-aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.transp)
+  test.transp$canopy_transpiration_mm_m2 <- test.transp$canopy_transpiration_mm_m2/30
+  
+  # re-grid
+  test.vwc <- fix_grid(test.vwc)
+  
+  #load reference raster
+  transit.all.raster<-raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
+  
+  #resample to reference raster
+  test.vwc <- resample(test.vwc,transit.all.raster)
+  
+  
+  if(land_cover=='grassland'){
+    
+    test.grassland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.grassland)
+    
+    # get rid of pixels where T is zero
+    test.grassland.cumulative.transp <- test.grassland.cumulative.transp %>%
+      dplyr::filter(canopy_transpiration_mm_m2 > .01)
+    
+    test.grassland.cumulative.transp$canopy_transpiration_mm_m2 <- test.grassland.cumulative.transp$canopy_transpiration_mm_m2/365
+    
+    land_cover_raster<-rasterFromXYZ(test.grassland.cumulative.transp)
+    rm(test.grassland.cumulative.transp)
+    
+    
+  }else if(land_cover=='forest'){
+    
+    
+    test.forest.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.forest)
+    
+    # get rid of pixels where T is zero
+    test.forest.cumulative.transp <- test.forest.cumulative.transp %>%
+      dplyr::filter(canopy_transpiration_mm_m2 > .01)
+    
+    test.forest.cumulative.transp$canopy_transpiration_mm_m2 <- test.forest.cumulative.transp$canopy_transpiration_mm_m2/365
+    
+    land_cover_raster<-rasterFromXYZ(test.forest.cumulative.transp)
+    rm(test.forest.cumulative.transp)
+    
+    
+  }else if(land_cover=='shrubland'){
+    
+    
+    test.shrubland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.shrubland)
+    
+    # get rid of pixels where T is zero
+    test.shrubland.cumulative.transp <- test.shrubland.cumulative.transp %>%
+      dplyr::filter(canopy_transpiration_mm_m2 > .01)
+    
+    test.shrubland.cumulative.transp$canopy_transpiration_mm_m2 <- test.shrubland.cumulative.transp$canopy_transpiration_mm_m2/365
+    
+    land_cover_raster<-rasterFromXYZ(test.shrubland.cumulative.transp)
+    rm(test.shrubland.cumulative.transp)
+    
+  }else if(land_cover=='cropland'){
+    
+    
+    
+    test.cropland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.cropland)
+    
+    # get rid of pixels where T is zero
+    test.cropland.cumulative.transp <- test.cropland.cumulative.transp %>%
+      dplyr::filter(canopy_transpiration_mm_m2 > .01)
+    
+    test.cropland.cumulative.transp$canopy_transpiration_mm_m2 <- test.cropland.cumulative.transp$canopy_transpiration_mm_m2/365
+    
+    #summary(test.cropland.cumulative.transp)
+    
+    land_cover_raster<-rasterFromXYZ(test.cropland.cumulative.transp)
+    rm(test.cropland.cumulative.transp)
+    
+    
+  }else if(land_cover=='tundra'){
+    
+    
+    test.tundra.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.tundra)
+    
+    # get rid of pixels where T is zero
+    test.tundra.cumulative.transp <- test.tundra.cumulative.transp %>%
+      dplyr::filter(canopy_transpiration_mm_m2 > .01)
+    
+    test.tundra.cumulative.transp$canopy_transpiration_mm_m2 <- test.tundra.cumulative.transp$canopy_transpiration_mm_m2/365
+    
+    #summary(test.tundra.cumulative.transp)
+    
+    land_cover_raster<-rasterFromXYZ(test.tundra.cumulative.transp)
+    rm(test.tundra.cumulative.transp)
+    
+    
+  }else if(land_cover=='xxx'){}
+  
+  
+  test.transp <- rasterFromXYZ(test.transp)
+  test.transp<- resample(test.transp,transit.all.raster)
+  
+  land_cover_raster <-resample(land_cover_raster,transit.all.raster)
+  test.vwc <-mask(test.vwc,land_cover_raster)
+  
+  test.vwc<-
+    merge(rasterToPoints(test.transp),rasterToPoints(test.vwc),
+          by=c('x','y'))
+  
+  test.vwc$turnover <- 
+    test.vwc$layer/test.vwc$canopy_transpiration_mm_m2
+  
+  
+  # bound the data by the 1st and 99th percentiles
+  #test.vwc <- filter_extremes_turnover(test.vwc)
+  
+  return(test.vwc)
+  
+  
+  
+}

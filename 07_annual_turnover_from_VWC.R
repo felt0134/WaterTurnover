@@ -1,6 +1,7 @@
 #combine T and VWC data
 
 source('05_Import_Storage_Transp_Data.R')
+test.transp <- rbind(test.tundra,test.cropland,test.forest,test.grassland,test.shrubland)
 
 #grasslands -----
 
@@ -17,12 +18,16 @@ test.grassland.cumulative.transp$canopy_transpiration_mm_m2 <- test.grassland.cu
 #summary(test.grassland.cumulative.transp)
 
 grasslandraster<-rasterFromXYZ(test.grassland.cumulative.transp)
+crs(grasslandraster)
 rm(test.grassland.cumulative.transp)
 
 
 #load in grassland VWC data
 outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016 and other extras
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -64,10 +69,15 @@ transit.grasslands.df <- as.data.frame(rasterToPoints(transit.grasslands))
 #summary(transit.grasslands.df)
 #hist(transit.grasslands.df$new)
 
-# #get rid of NAs
-# transit.grasslands.df <- transit.grasslands.df %>%
-#   dplyr::filter(!new=='NA')
+#save the unfiltered raster 
+# transit.grasslands.df.unfiltered.raster <- rasterFromXYZ(transit.grasslands.df)
+# crs(transit.grasslands.df.unfiltered.raster) <- '+proj=longlat +datum=WGS84'
+# plot(transit.grasslands.df.unfiltered.raster)
+# writeRaster(transit.grasslands.df.unfiltered.raster,
+#             './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
 
+
+#STOPPED HERE 7/15/2021
 
 # filter out extreme values
 high<-as.numeric(quantile(transit.grasslands.df$new,probs=c(0.95)))
@@ -111,7 +121,10 @@ rm(test.forest.cumulative.transp)
 
 #load in forest VWC data
 outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016 and other extras
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -153,10 +166,14 @@ transit.forests.df <- as.data.frame(rasterToPoints(transit.forests))
 #summary(transit.forests.df)
 #hist(transit.forests.df$new)
 
-# #get rid of NAs
-# transit.forests.df <- transit.forests.df %>%
-#   dplyr::filter(!new=='NA')
+#save the unfiltered raster
+transit.forests.df.unfiltered.raster <- rasterFromXYZ(transit.forests.df)
+crs(transit.forests.df.unfiltered.raster) <- '+proj=longlat +datum=WGS84'
+plot(transit.forests.df.unfiltered.raster)
+writeRaster(transit.forests.df.unfiltered.raster,
+            './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
 
+#STOPPED HERE 07/15/2021
 
 # filter out extreme values
 high<-as.numeric(quantile(transit.forests.df$new,probs=c(0.95)))
@@ -174,7 +191,7 @@ plot(forest.transit.annual)
 rm(stack.test,transit.forests)
 
 #-------------------------------------------------------------------------------
-#shrubland ------
+#shrublands ------
 
 test.shrubland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.shrubland)
 # head(test.shrubland.cumulative.transp)
@@ -194,7 +211,10 @@ rm(test.shrubland.cumulative.transp)
 
 #load in shrubland VWC data
 outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016 and other extras
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -236,9 +256,14 @@ transit.shrublands.df <- as.data.frame(rasterToPoints(transit.shrublands))
 #summary(transit.shrublands.df)
 #hist(transit.shrublands.df$new)
 
-# #get rid of NAs
-# transit.shrublands.df <- transit.shrublands.df %>%
-#   dplyr::filter(!new=='NA')
+# save the unfiltered raster
+# transit.shrublands.df.unfiltered.raster <- rasterFromXYZ(transit.shrublands.df)
+# crs(transit.shrublands.df.unfiltered.raster) <- '+proj=longlat +datum=WGS84'
+# plot(transit.shrublands.df.unfiltered.raster)
+# writeRaster(transit.shrublands.df.unfiltered.raster,
+#             './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+
+#STOPPED HERE 7/15/2021
 
 
 # filter out extreme values
@@ -259,7 +284,7 @@ rm(stack.test,transit.shrublands)
 
 
 #-------------------------------------------------------------------------------
-#tundra------
+#tundras ------
 test.tundra.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.tundra)
 # head(test.tundra.cumulative.transp)
 # str(test.tundra.cumulative.transp)
@@ -273,12 +298,16 @@ test.tundra.cumulative.transp$canopy_transpiration_mm_m2 <- test.tundra.cumulati
 #summary(test.tundra.cumulative.transp)
 
 tundraraster<-rasterFromXYZ(test.tundra.cumulative.transp)
+crs(tundraraster) <- '+proj=longlat +datum=WGS84'
 rm(test.tundra.cumulative.transp)
 
 
 #load in tundra VWC data
 outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016 and other extras
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -320,10 +349,14 @@ transit.tundras.df <- as.data.frame(rasterToPoints(transit.tundras))
 #summary(transit.tundras.df)
 #hist(transit.tundras.df$new)
 
-# #get rid of NAs
-# transit.tundras.df <- transit.tundras.df %>%
-#   dplyr::filter(!new=='NA')
+#save the unfiltered raster 
+transit.tundras.df.unfiltered.raster <- rasterFromXYZ(transit.tundras.df)
+crs(transit.tundras.df.unfiltered.raster) <- '+proj=longlat +datum=WGS84'
+plot(transit.tundras.df.unfiltered.raster)
+writeRaster(transit.tundras.df.unfiltered.raster,
+            './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
 
+#STOPPED HERE 7/15/2021
 
 # filter out extreme values
 high<-as.numeric(quantile(transit.tundras.df$new,probs=c(0.95)))
@@ -341,7 +374,7 @@ plot(tundra.transit.annual)
 rm(stack.test,transit.tundras)
 
 #-------------------------------------------------------------------------------
-#Cropland -----
+#croplands -----
 
 test.cropland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.cropland)
 # head(test.cropland.cumulative.transp)
@@ -361,7 +394,10 @@ rm(test.cropland.cumulative.transp)
 
 #load in cropland VWC data
 outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016 and other extras
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -387,9 +423,6 @@ test.vwc<-fix_grid(test.vwc)
 test.vwc <- resample(test.vwc,croplandraster)
 vwc.cropland <- mask(test.vwc,croplandraster)
 rm(test.vwc)
-# vwc.cropland <- resample(vwc.cropland,croplandraster)
-# plot(vwc.cropland)
-# plot(croplandraster)
 
 #try to stack them
 stack.test<- raster::stack(vwc.cropland,croplandraster)
@@ -403,10 +436,14 @@ transit.croplands.df <- as.data.frame(rasterToPoints(transit.croplands))
 #summary(transit.croplands.df)
 #hist(transit.croplands.df$new)
 
-# #get rid of NAs
-# transit.croplands.df <- transit.croplands.df %>%
-#   dplyr::filter(!new=='NA')
+#save the unfiltered raster 
+# transit.croplands.df.unfiltered.raster <- rasterFromXYZ(transit.croplands.df)
+# crs(transit.croplands.df.unfiltered.raster) <- '+proj=longlat +datum=WGS84'
+# plot(transit.croplands.df.unfiltered.raster)
+# writeRaster(transit.croplands.df.unfiltered.raster,
+#             './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_croplands_unfiltered.tif')
 
+#STOPPED HERE 7/15/2021
 
 # filter out extreme values
 high<-as.numeric(quantile(transit.croplands.df$new,probs=c(0.95)))
@@ -430,6 +467,33 @@ rm(stack.test,transit.croplands)
 
 
 #-------------------------------------------------------------------------------
+
+
+
+#import the unfiltered files and combine them all-----
+
+#import raster
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+summary(rasterToPoints(grasslands_unfiltered))
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+summary(forests_unfiltered)
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+summary(shrublands_unfiltered)
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+summary(tundras_unfiltered)
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_croplands_unfiltered.tif')
+summary(croplands_unfiltered)
+
+
+global_raster_unfiltered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                            shrublands_unfiltered,tundras_unfiltered,
+                            croplands_unfiltered)
+summary(global_raster_unfiltered)
+#6.1 days
+
+# writeRaster(global_raster_unfiltered,
+#             './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
+
 
 
 #combine all of them -----

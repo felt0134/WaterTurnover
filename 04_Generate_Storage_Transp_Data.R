@@ -1,6 +1,10 @@
 
 # generate monthly storage and canopy transpiration data frames for each
+
 # land cover type
+ncpath_9_km_2015_2017_smap_enhanced <- "./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
+et_9km_monthly_2002_2017_length <- dir(ncpath_9_km_2015_2017_smap_enhanced, full.names = T)
+
 
 # grasslands ------
 
@@ -8,8 +12,8 @@ file.id<-c(1:25)
 regions<-c('Grasslands') 
 
 #10:21 = all months in year 2016
-
-for(i in file.id[10:21]){
+#9:10 = December 2015-December 2016 (offset by one)
+for(i in file.id[9]){
   
   for(j in 1:length(regions)){
     
@@ -54,7 +58,7 @@ for(i in file.id[10:21]){
 file.id<-c(1:25)
 regions<-c('Forest') 
 
-for(i in file.id[10:21]){
+for(i in file.id[9]){
   
   for(j in 1:length(regions)){
     
@@ -86,7 +90,7 @@ for(i in file.id[10:21]){
 file.id<-c(1:25)
 regions<-c('Tundra') 
 
-for(i in file.id[10:21]){
+for(i in file.id[9]){
   
   for(j in 1:length(regions)){
     
@@ -117,7 +121,7 @@ for(i in file.id[10:21]){
 file.id<-c(1:25)
 regions<-c('Shrubland') 
 
-for(i in file.id[10:21]){
+for(i in file.id[9]){
   
   for(j in 1:length(regions)){
     
@@ -146,7 +150,7 @@ for(i in file.id[10:21]){
 file.id<-c(1:25)
 regions<-c('Cropland') 
 
-for(i in file.id[10:21]){
+for(i in file.id[9]){
   
   for(j in 1:length(regions)){
     
