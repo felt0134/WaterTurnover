@@ -507,3 +507,21 @@ rm(december_2015)
 
 
 
+
+#-------------------------------------------------------------------------------
+# Import and Re-scale Aboveground Biomass Density for your 2010 --------
+
+#file source:
+#https://uwmadison.app.box.com/s/xj3fnde17yazlogbiq740da2mrv2ma61
+
+#upload original
+aboveground_biomass_density <- raster('./../../../Data/Biomass/Biomass_Density_Spawn/AFELTON_agbDW_Mgha_x10_300m.tif')
+#plot(aboveground_biomass_density)
+
+#aggregate 30X to match resolution of canopy trasnpiration data
+aboveground_biomass_density_30x_aggregate <- raster::aggregate(aboveground_biomass_density,fact=30)
+#plot(aaboveground_biomass_density_30x_aggregate)
+
+#save to file
+writeRaster(aboveground_biomass_density_30x_aggregate,'./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+#-------------------------------------------------------------------------------

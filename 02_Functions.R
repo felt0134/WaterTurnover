@@ -938,6 +938,14 @@ get_seasonal_turnover <- function(test){
 
 #------------------------------------------------
 # import VOD (converted to VWC) data -----------
+
+# VOD is linearly proportional to VWC: VOD = VWC*beta
+# we assume beta here is 0.11, as derived from lookup tabl
+# from SMAP algoritihim development product. beta varies from 0.10-0.11 but
+# is surprisingly constant across land cover types. 
+# This needs additional scrutiney. 
+# https://smap.jpl.nasa.gov/documents/
+
 get_vwc <-function(x,y,filepath){
   
   april_vector <-c(x:y)
@@ -1022,6 +1030,8 @@ get_vwc <-function(x,y,filepath){
   #head(april_ag)
   
   return(april_ag)
+  
+  # *kg/mm^2 and mm^m2 (height of water over m^2) workout to be the same, so that conversion is not done.
   
 }
 
@@ -1516,3 +1526,178 @@ get_monthly_turnover_VWC <- function(month,land_cover){
   
   
 }
+#------------------------------------------------
+#95% confidence interval-----
+
+error.95 <-function(x) {
+  n = length(x)
+  se = sd(x)/sqrt(n)
+  error <- qnorm(0.975)*se
+  
+  return(error)
+}
+#------------------------------------------------
+# get monthly VWC-based estimates of storage ------
+
+get_monthly_storage_VWC <- function(month,land_cover){
+  
+  
+  
+  if(month=='january'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('1'))
+    
+    
+    
+  }else if(month=='february'){
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('2'))
+    
+  }else if(month=='march'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('3'))
+    
+    
+  }else if(month=='april'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('4'))
+    
+
+  }else if(month=='may'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('5'))
+    
+    
+  }else if(month=='june'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('6'))
+    
+    
+  }else if(month=='july'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('7'))
+    
+    
+  }else if(month=='august'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('8'))
+    
+
+  }else if(month=='september'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('9'))
+    
+
+  }else if(month=='october'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('10'))
+    
+    
+  }else if(month=='november'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('11'))
+    
+    
+  }else if(month=='december'){
+    
+    
+    test.vwc<- test.vwc %>%
+      dplyr::filter(month == c('12'))
+    
+    
+  }
+  
+  
+  
+  # re-grid
+  test.vwc <- fix_grid(test.vwc)
+  
+  #load reference raster
+  storage.all.raster<-raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+  
+  #resample to reference raster
+  test.vwc <- resample(test.vwc,storage.all.raster)
+
+  
+  if(land_cover=='grassland'){
+    
+   
+    land_cover_raster<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_grassland_unfiltered.tif')
+    
+    
+  }else if(land_cover=='forest'){
+    
+    
+  
+    land_cover_raster<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_forest_unfiltered.tif')
+    
+    
+  }else if(land_cover=='shrubland'){
+    
+    
+    land_cover_raster<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_shrubland_unfiltered.tif')
+    
+  }else if(land_cover=='cropland'){
+    
+    land_cover_raster<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_cropland_unfiltered.tif')
+    
+    
+  }else if(land_cover=='tundra'){
+    
+    
+    land_cover_raster<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_tundra_unfiltered.tif')
+    
+  }else if(land_cover=='xxx'){}
+  
+
+  #land_cover_raster <-resample(land_cover_raster,storage.all.raster)
+  land_cover_raster <-resample(land_cover_raster,test.vwc)
+  test.vwc <-mask(test.vwc,land_cover_raster)
+  
+  #convert to data frame
+  test.vwc <- data.frame(rasterToPoints(test.vwc))
+
+  # bound the data by the 1st and 99th percentiles
+  #test.vwc <- filter_extremes_turnover(test.vwc)
+  
+  return(test.vwc)
+  
+  
+  
+}
+
+#------------------------------------------------
+# go from mm/m^2 to cubic km ----
+get_km_cubed <- function(x){
+  
+  x <- x/10 # get meters/m^2
+  x <- x*9e+6 # get m/m^2 in an entire pixel. This is cubic m
+  x <- x*1e-9 # get cubic km
+  
+  
+  return(x)
+  
+}
+#------------------------------------------------
+
