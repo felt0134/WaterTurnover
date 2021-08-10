@@ -1,718 +1,309 @@
 
-#Script to get seansality and intra-annual variability of transit time
+# compare VWC from VOD and tissue density -----
 
-#Note: because (I think) of differential availability of data for pixels,
-# monthly pixels have trouble getting converted to aregular grid.
+#import DF
+dry_biomass<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
 
-#if not run
-#source('05_Import_Storage_Transp_Data.R')
+# convert to mg/hectare
+dry_biomass <- dry_biomass/10
 
-#grasslands -----
+#1000000 grams = 1 megagram
+dry_biomass<-dry_biomass*1000000
 
-test.grassland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.grassland)
-# head(test.grassland.cumulative.transp)
-# str(test.grassland.cumulative.transp)
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass<-dry_biomass/10000
 
-# get rid of pixels where T is zero
-test.grassland.cumulative.transp <- test.grassland.cumulative.transp %>%
-  dplyr::filter(canopy_transpiration_mm_m2 > .01)
+plot(dry_biomass)
 
-test.grassland.cumulative.transp$canopy_transpiration_mm_m2 <- test.grassland.cumulative.transp$canopy_transpiration_mm_m2/365
+#convert g to mm (in height) per meter squared:
 
-#summary(test.grassland.cumulative.transp)
 
-grasslandraster<-rasterFromXYZ(test.grassland.cumulative.transp)
-rm(test.grassland.cumulative.transp)
+# The logic:
+#   
+# 1 gram = 1 ml = 1000 mm^3
+# That is a volume
+# 1 m^2=1000000 mm^2 = 1000mm*1000mm
+# Volume = Length*Width*Height
+# Therefore
+# 1000 mm3 volume = 1000 length*1000width*XXHeight
+# 1000/1000000 = .001 mm of water on a m2
 
+dry_biomass<-dry_biomass*.001
 
-#load in grassland VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
 
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  vwc.list[[j]] <- test
-  
-  
-  
-}
+#import VOD->VWC raster (in mm/m^2) 
+vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
 
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-rm(vwc.list,test)
-#head(test.vwc)
+#turn to DF
+vwc_from_vod_df_2 <- data.frame(rasterToPoints(vwc_from_vod))
 
-#Get CV
-test.vwc<-aggregate(vwc~x+y,cv,data=test.vwc)
-#head(test.vwc)
+#turn biomass raster to df
 
-test.vwc<-fix_grid(test.vwc)
-#plot(test.vwc)
+#resample so the lat/lons match up nicely
+dry_biomass_2 <- resample(dry_biomass,vwc_from_vod)
 
-test.vwc <- resample(test.vwc,grasslandraster)
-vwc.grassland <- mask(test.vwc,grasslandraster)
-rm(test.vwc)
-# vwc.grassland <- resample(vwc.grassland,grasslandraster)
-# plot(vwc.grassland)
-# plot(grasslandraster)
+#then merge
+dry_biomass_df_2 <- data.frame(rasterToPoints(dry_biomass_2))
 
-#try to stack them
-stack.test<- raster::stack(vwc.grassland,grasslandraster)
-#plot(stack.test)
+#merge them
+merge_biomass_vwc <- merge(vwc_from_vod_df_2,dry_biomass_df_2,by=c('x','y'))
+head(merge_biomass_vwc)
 
-stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-#plot(stack.test[c(1,2,3)])
+#calculate difference
+merge_biomass_vwc$diff <- (merge_biomass_vwc$aboveground_dry_biomass_density_aggregate_30X - 
+                             merge_biomass_vwc$annual_storage_vwc_global_unfiltered)
+summary(merge_biomass_vwc)
+# median diff of -0.6 mm/m^2
 
-transit.grasslands <- stack.test$new
-transit.grasslands.cv.df <- as.data.frame(rasterToPoints(transit.grasslands))
-#summary(transit.grasslands.df)
-#hist(transit.grasslands.cv.df$new)
+#make to raster
+merge_biomass_vwc_raster <- rasterFromXYZ(merge_biomass_vwc[c(1,2,5)])
+crs(merge_biomass_vwc_raster) <-  '+proj=longlat +datum=WGS84 +no_defs'
 
+#map out the differences
+png('Figures/2016_storage_difference.png',
+    width=8,height=6,units="in",res=300)
+plot(merge_biomass_vwc_raster,main='VWC difference (biomass-based minus VOD-based)')
+dev.off()
 
-# filter out extreme values
-high<-as.numeric(quantile(transit.grasslands.cv.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.grasslands.cv.df$new,probs=c(0.05)))
+#look at correlation
+cor(merge_biomass_vwc$annual_storage_vwc_global_unfiltered,
+    merge_biomass_vwc$aboveground_dry_biomass_density_aggregate_30X)
+# 0.77
 
-transit.grasslands.cv.df <- transit.grasslands.cv.df %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
+#make correlation plot
+#they are highly correlated
+library(scales) #needed for alpha command
 
-transit.grasslands.cv.df$Cover <- 'grasslands'
+png('Figures/Supporting/obs.predicted.model_highres.png',
+    width=1000,height=1000,res=150)
 
-hist(transit.grasslands.cv.df$new)
-summary(transit.grasslands.df$new)
+plot(merge_biomass_vwc$annual_storage_vwc_global_unfiltered,
+     merge_biomass_vwc$aboveground_dry_biomass_density_aggregate_30X,
+     cex=0.3,col=alpha("grey70",0.5),
+     ylab='Biomass-based water storage',xlab='VOD-based water storage')
 
-#change back to raster to plot
-grassland.cv.transit <- rasterFromXYZ(transit.grasslands.cv.df[c(1,2,3)])
-plot(grassland.cv.transit)
-rm(stack.test,transit.grasslands)
-
-#done 
-
-
-#load in grassland VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  test.vwc<-aggregate(vwc~x+y,mean,data=test)
-  # # test<-test %>%
-  # #   dplyr::select(x,y,vwc)
-  # e<-extent(test[c(1:2)])
-  # r<-raster(e,ncol=500,nrow=500,crs='+proj=longlat +datum=WGS84')
-  # test.vwc<-fix_grid(test)
-  # #plot(test.vwc)
-  # 
-  # test.vwc <- resample(test.vwc,grasslandraster)
-  # vwc.grassland <- mask(test.vwc,grasslandraster)
-  # rm(test.vwc)
-  # 
-  # #try to stack them
-  # stack.test<- raster::stack(vwc.grassland,grasslandraster)
-  # #plot(stack.test)
-  # 
-  # stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-  # #plot(stack.test[c(1,2,3)])
-  # 
-  # transit.grasslands <- stack.test$new
-  # transit.grasslands.df <- as.data.frame(rasterToPoints(transit.grasslands))
-  
-  test.vwc$month <- j
-  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2016_','',test.vwc$month)
-  test.vwc$month <- gsub('.csv','',test.vwc$month)
-  
-  vwc.list[[j]] <- test.vwc
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-#test.vwc$month <- as.numeric(as.character(test.vwc$month))
-head(test.vwc)
-rm(vwc.list,test)
-
-test.vwv.jan.march <- test.vwc %>%
-  dplyr::filter(month < 4)
-
-head(test.vwv.jan.march)
-
-#STOPPED HERE
-
-head(test.vwv.jan.march)
-test.vwv.jan.march <- aggregate(vwc~x+y,mean,data=test.vwv.jan.march)
-test.vwv.jan.march <- fix_grid(test.vwv.jan.march)
-plot(test.vwv.jan.march)
-
-unique(test.vwv.jan.march$month)
-summary(test.vwv.jan.march)
-
-?gsub
-#-------------------------------------------------------------------------------
-#forests ------
-
-test.forest.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.forest)
-# head(test.forest.cumulative.transp)
-# str(test.forest.cumulative.transp)
-
-# get rid of pixels where T is zero
-test.forest.cumulative.transp <- test.forest.cumulative.transp %>%
-  dplyr::filter(canopy_transpiration_mm_m2 > .01)
-
-test.forest.cumulative.transp$canopy_transpiration_mm_m2 <- test.forest.cumulative.transp$canopy_transpiration_mm_m2/365
-
-#summary(test.forest.cumulative.transp)
-
-forestraster<-rasterFromXYZ(test.forest.cumulative.transp)
-rm(test.forest.cumulative.transp)
-
-
-#load in forest VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  vwc.list[[j]] <- test
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-rm(vwc.list,test)
-#head(test.vwc)
-test.vwc<-aggregate(vwc~x+y,mean,data=test.vwc)
-#head(test.vwc)
-
-test.vwc<-fix_grid(test.vwc)
-#plot(test.vwc)
-
-test.vwc <- resample(test.vwc,forestraster)
-vwc.forest <- mask(test.vwc,forestraster)
-rm(test.vwc)
-# vwc.forest <- resample(vwc.forest,forestraster)
-# plot(vwc.forest)
-# plot(forestraster)
-
-#try to stack them
-stack.test<- raster::stack(vwc.forest,forestraster)
-#plot(stack.test)
-
-stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-#plot(stack.test[c(1,2,3)])
-
-transit.forests <- stack.test$new
-transit.forests.df <- as.data.frame(rasterToPoints(transit.forests))
-#summary(transit.forests.df)
-#hist(transit.forests.df$new)
-
-# #get rid of NAs
-# transit.forests.df <- transit.forests.df %>%
-#   dplyr::filter(!new=='NA')
-
-
-# filter out extreme values
-high<-as.numeric(quantile(transit.forests.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.forests.df$new,probs=c(0.05)))
-
-transit.forests.df <- transit.forests.df %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
-
-transit.forests.df$Cover <- 'forests'
-
-#change back to raster to plot
-forest.transit.annual <- rasterFromXYZ(transit.forests.df[c(1,2,3)])
-plot(forest.transit.annual)
-rm(stack.test,transit.forests)
-
-#-------------------------------------------------------------------------------
-#shrubland ------
-
-test.shrubland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.shrubland)
-# head(test.shrubland.cumulative.transp)
-# str(test.shrubland.cumulative.transp)
-
-# get rid of pixels where T is zero
-test.shrubland.cumulative.transp <- test.shrubland.cumulative.transp %>%
-  dplyr::filter(canopy_transpiration_mm_m2 > .01)
-
-test.shrubland.cumulative.transp$canopy_transpiration_mm_m2 <- test.shrubland.cumulative.transp$canopy_transpiration_mm_m2/365
-
-#summary(test.shrubland.cumulative.transp)
-
-shrublandraster<-rasterFromXYZ(test.shrubland.cumulative.transp)
-rm(test.shrubland.cumulative.transp)
-
-
-#load in shrubland VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  vwc.list[[j]] <- test
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-rm(vwc.list,test)
-#head(test.vwc)
-test.vwc<-aggregate(vwc~x+y,mean,data=test.vwc)
-#head(test.vwc)
-
-test.vwc<-fix_grid(test.vwc)
-#plot(test.vwc)
-
-test.vwc <- resample(test.vwc,shrublandraster)
-vwc.shrubland <- mask(test.vwc,shrublandraster)
-rm(test.vwc)
-# vwc.shrubland <- resample(vwc.shrubland,shrublandraster)
-# plot(vwc.shrubland)
-# plot(shrublandraster)
-
-#try to stack them
-stack.test<- raster::stack(vwc.shrubland,shrublandraster)
-#plot(stack.test)
-
-stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-#plot(stack.test[c(1,2,3)])
-
-transit.shrublands <- stack.test$new
-transit.shrublands.df <- as.data.frame(rasterToPoints(transit.shrublands))
-#summary(transit.shrublands.df)
-#hist(transit.shrublands.df$new)
-
-# #get rid of NAs
-# transit.shrublands.df <- transit.shrublands.df %>%
-#   dplyr::filter(!new=='NA')
-
-
-# filter out extreme values
-high<-as.numeric(quantile(transit.shrublands.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.shrublands.df$new,probs=c(0.05)))
-
-transit.shrublands.df <- transit.shrublands.df %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
-
-transit.shrublands.df$Cover <- 'shrublands'
-
-#change back to raster to plot
-shrubland.transit.annual <- rasterFromXYZ(transit.shrublands.df[c(1,2,3)])
-plot(shrubland.transit.annual)
-rm(stack.test,transit.shrublands)
-
-
-
-#-------------------------------------------------------------------------------
-#tundra------
-test.tundra.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.tundra)
-# head(test.tundra.cumulative.transp)
-# str(test.tundra.cumulative.transp)
-
-# get rid of pixels where T is zero
-test.tundra.cumulative.transp <- test.tundra.cumulative.transp %>%
-  dplyr::filter(canopy_transpiration_mm_m2 > .01)
-
-test.tundra.cumulative.transp$canopy_transpiration_mm_m2 <- test.tundra.cumulative.transp$canopy_transpiration_mm_m2/365
-
-#summary(test.tundra.cumulative.transp)
-
-tundraraster<-rasterFromXYZ(test.tundra.cumulative.transp)
-rm(test.tundra.cumulative.transp)
-
-
-#load in tundra VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  vwc.list[[j]] <- test
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-rm(vwc.list,test)
-#head(test.vwc)
-test.vwc<-aggregate(vwc~x+y,mean,data=test.vwc)
-#head(test.vwc)
-
-test.vwc<-fix_grid(test.vwc)
-#plot(test.vwc)
-
-test.vwc <- resample(test.vwc,tundraraster)
-vwc.tundra <- mask(test.vwc,tundraraster)
-rm(test.vwc)
-# vwc.tundra <- resample(vwc.tundra,tundraraster)
-# plot(vwc.tundra)
-# plot(tundraraster)
-
-#try to stack them
-stack.test<- raster::stack(vwc.tundra,tundraraster)
-#plot(stack.test)
-
-stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-#plot(stack.test[c(1,2,3)])
-
-transit.tundras <- stack.test$new
-transit.tundras.df <- as.data.frame(rasterToPoints(transit.tundras))
-#summary(transit.tundras.df)
-#hist(transit.tundras.df$new)
-
-# #get rid of NAs
-# transit.tundras.df <- transit.tundras.df %>%
-#   dplyr::filter(!new=='NA')
-
-
-# filter out extreme values
-high<-as.numeric(quantile(transit.tundras.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.tundras.df$new,probs=c(0.05)))
-
-transit.tundras.df <- transit.tundras.df %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
-
-transit.tundras.df$Cover <- 'tundras'
-
-#change back to raster to plot
-tundra.transit.annual <- rasterFromXYZ(transit.tundras.df[c(1,2,3)])
-plot(tundra.transit.annual)
-rm(stack.test,transit.tundras)
-
-#-------------------------------------------------------------------------------
-#Cropland -----
-
-test.cropland.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.cropland)
-# head(test.cropland.cumulative.transp)
-# str(test.cropland.cumulative.transp)
-
-# get rid of pixels where T is zero
-test.cropland.cumulative.transp <- test.cropland.cumulative.transp %>%
-  dplyr::filter(canopy_transpiration_mm_m2 > .01)
-
-test.cropland.cumulative.transp$canopy_transpiration_mm_m2 <- test.cropland.cumulative.transp$canopy_transpiration_mm_m2/365
-
-#summary(test.cropland.cumulative.transp)
-
-croplandraster<-rasterFromXYZ(test.cropland.cumulative.transp)
-rm(test.cropland.cumulative.transp)
-
-
-#load in cropland VWC data
-outfile <- './../../../Data/Derived_data/VWC/'
-ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
-
-vwc.list<-list()
-for(j in ecoregion_dir[1:12]){
-  
-  
-  test<-fread(j)
-  vwc.list[[j]] <- test
-  
-  
-  
-}
-
-#make into data frame
-test.vwc<- do.call("rbind", vwc.list)
-rm(vwc.list,test)
-#head(test.vwc)
-test.vwc<-aggregate(vwc~x+y,mean,data=test.vwc)
-#head(test.vwc)
-
-test.vwc<-fix_grid(test.vwc)
-#plot(test.vwc)
-
-test.vwc <- resample(test.vwc,croplandraster)
-vwc.cropland <- mask(test.vwc,croplandraster)
-rm(test.vwc)
-# vwc.cropland <- resample(vwc.cropland,croplandraster)
-# plot(vwc.cropland)
-# plot(croplandraster)
-
-#try to stack them
-stack.test<- raster::stack(vwc.cropland,croplandraster)
-#plot(stack.test)
-
-stack.test$new <- stack.test$layer/stack.test$canopy_transpiration_mm_m2
-#plot(stack.test[c(1,2,3)])
-
-transit.croplands <- stack.test$new
-transit.croplands.df <- as.data.frame(rasterToPoints(transit.croplands))
-#summary(transit.croplands.df)
-#hist(transit.croplands.df$new)
-
-# #get rid of NAs
-# transit.croplands.df <- transit.croplands.df %>%
-#   dplyr::filter(!new=='NA')
-
-
-# filter out extreme values
-high<-as.numeric(quantile(transit.croplands.df$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.croplands.df$new,probs=c(0.05)))
-
-transit.croplands.df <- transit.croplands.df %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
-
-transit.croplands.df$Cover <- 'croplands'
-
-hist(transit.croplands.df$new)
-summary(transit.croplands.df$new)
-
-#change back to raster to plot
-cropland.transit.annual <- rasterFromXYZ(transit.croplands.df[c(1,2,3)])
-plot(cropland.transit.annual)
-rm(stack.test,transit.croplands)
-
-#done 
-
-
-#-------------------------------------------------------------------------------
-
-
-#combine all of them -----
-
-transit.all <- rbind(transit.forests.df,transit.grasslands.df,transit.shrublands.df,
-                    transit.tundras.df,transit.croplands.df)
-
-summary(transit.all)
-hist(transit.all$new)
-head(transit.all)
-
-# filter out extreme values
-# high<-as.numeric(quantile(transit.all$new,probs=c(0.95)))
-# low<-as.numeric(quantile(transit.all$new,probs=c(0.05)))
-# 
-# transit.all <- transit.all %>%
-#   dplyr::filter(layer < high) %>%
-#   dplyr::filter(layer > low)
-# 
-
-# 
-# plot(rasterFromXYZ(transit.all[c(1,2,3)]),
-#       main='Transit time of water in aboveground biomass (days)')
-
-merge.test <- raster::merge(tundra.transit.annual,grassland.transit.annual,
-                            forest.transit.annual,shrubland.transit.annual,
-                            cropland.transit.annual)
-plot(merge.test)
-
-merge.test <- as.data.frame(rasterToPoints(merge.test))
-head(merge.test)
-
-#I am going to contrain the outliers here to help with the mapping:
-
-# filter out extreme values
-high<-as.numeric(quantile(merge.test$layer,probs=c(0.95)))
-low<-as.numeric(quantile(merge.test$layer,probs=c(0.05)))
-
-merge.test <- merge.test %>%
-  dplyr::filter(layer < high) %>%
-  dplyr::filter(layer > low)
-
-
-# make figures
-
-#convert back to raster
-transit.all.raster <- rasterFromXYZ(merge.test)
-crs(transit.all.raster) <-'+proj=longlat +datum=WGS84'
-
-#save global raster
-writeRaster(transit.all.raster,'./../../../Data/Derived_data/VWC/global_transit_2016.tif')
-
-#plot it out
-summary(transit.all.raster)
-
-delPosColors= c("lightblue","darkblue")
-delNegColors= c("brown","red",'rosybrown1')
-
-col_breaks <- seq(0.0,22,by=2)
-my_colors <- c(colorRampPalette(delNegColors)(sum(col_breaks< 6.1)),
-               colorRampPalette(delPosColors)(sum(col_breaks> 6.1)))
-
-# hist(transit.all.raster$layer)
-# 
-# png('Figures/2016_annual_transit_VWC.png',width=8,height=6,units="in",res=400)
-# par(mar=c(1, 1, 1, 1))
-# plot(transit.all.raster,
-#      main='Transit time of water in aboveground biomass (days)',
-#      breaks = col_breaks, col=my_colors, asp=1, 
-#      xaxt = "n", yaxt = "n",bty="n")
-# dev.off()
-
-# distributions by land cover type
-# merge.test.land.cover <- merge(merge.test,transit.all[c(1,2,4)],by=c('x','y'))
-# head(merge.test.land.cover)
-
-head(transit.all)
-
-# filter out extreme values
-high<-as.numeric(quantile(transit.all$new,probs=c(0.95)))
-low<-as.numeric(quantile(transit.all$new,probs=c(0.05)))
-
-transit.all <- transit.all %>%
-  dplyr::filter(new < high) %>%
-  dplyr::filter(new > low)
-
-head(transit.all)
-summary(transit.all)
-
-# PDFs in base R
-#get normal distribution of PPT
-
-
-transit.all.cover <- unique(transit.all$Cover)
-transit.all.cover.list<-list()
-
-for(i in transit.all.cover){
-  
-  test<-subset(transit.all,Cover==i)
-  # pdf<-get_pdf_df(subset)
-  # #pdf$cover <- i
-  transit.all.cover.list[[i]] <- test
-  
-  
-}
-
-head(transit.all.cover.list[2])
-
-
-# forests_pdf <- get_pdf_df(transit.forests.df)
-# grasslands_pdf<- get_pdf_df(transit.grasslands.df)
-# shrubland_pdf<- get_pdf_df(transit.shrublands.df)
-
-# pdf('PDF_rainfall.pdf',width=8,height=6)
-# 
-# plot(data.frame(transit.all.cover.list[1])$forests.toy.df,data.frame(transit.all.cover.list[1])$forests.y,type='l',col='blue')
-# lines(grasslands_pdf$toy.df,grasslands_pdf$y,type='l',col='red',add=TRUE)
-
-# make two panel figure
-
-png(file='Figures/transt_map_and_distributions.png',
-    width=2000,height=1800,res=200)
-
-layout(matrix(1:2, ncol=1))
-par(oma=c(6, 5, 6, 5), mar=c(0.2, 0.0, 1.6, 0.2),pty='s')
-
-# Panel label setup
-line = 0.5
-cex = 1.5
-side = 3
-adj= 0.1
-
-#panel 1:
-
-plot(transit.all.raster,
-     main='',
-     breaks = col_breaks, col=my_colors, asp=1, 
-     xaxt = "n", yaxt = "n",bty="n")
-mtext(expression(paste("Transit time (days)")),side=4,line= -.75,cex=1,
-      outer=TRUE,adj=.78)
-mtext("A",adj=0,cex = 1.25)
-
-#panel 2:
-
-#grasslands
-plot(density(data.frame(transit.all.cover.list[2])$grasslands.new),col='red',lwd=3,
-     xlim=c(0,22),ylim=c(0,0.6),xlab='Transit time of water in aboveground biomass (days)',
-     ylab='Probability density',main='',cex.lab=1.25)
-#forests
-lines(density(data.frame(transit.all.cover.list[1])$forests.new),col='blue',lwd=3,add=TRUE)
-#shrublands
-lines(density(data.frame(transit.all.cover.list[3])$shrublands.new),col='black',lwd=3,add=TRUE)
-#tundras
-lines(density(data.frame(transit.all.cover.list[4])$tundras.new),col='grey70',lwd=3,add=TRUE)
-#croplands
-lines(density(data.frame(transit.all.cover.list[5])$croplands.new),col='goldenrod',lwd=3,add=TRUE)
-legend(10, 0.5, legend=c("Forests","Grasslands", "Shrublands",
-                             "Tundras","Croplands"),         #alpha legend: 0.015, 150
-       col=c("blue", "red","black","grey70","goldenrod"), lty=1.25,lwd=5,cex=1.25,box.lty=0)
-mtext('Transit time of water in aboveground biomass (days)',side=1,line=2,cex=1.25,outer=TRUE)
-mtext('Probability density',side=2,line= 2.2,cex=1.25,outer=TRUE,adj=0.15)
-mtext("B",adj=0,cex = 1.25)
+# Make 1:1 line
+abline(a=0,b=1,col='black',lwd=4)
+text(15,10,'1:1 line')
 
 dev.off()
 
-#Now look at seasonality -----
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
-#-------------------------------------------------------------------------------
+
+# compare global amounts of water in cubic km -----
+
+#now go from mm/m^2 to km cubed
+dry_biomass_cubed <- get_km_cubed(dry_biomass)
+plot(dry_biomass)
+
+vwc_from_vod_cubed <- get_km_cubed(vwc_from_vod)
+plot(vwc_from_vod)
+
+#convert to df to add up
+dry_biomass_cubed_df <- data.frame(rasterToPoints(dry_biomass_cubed))
+vwc_from_vod_cubed_df <- data.frame(rasterToPoints(vwc_from_vod_cubed))
+
+#compare total values (allowing pixel rep. to vary among rasters):
+sum(dry_biomass_cubed_df$aboveground_dry_biomass_density_aggregate_30X)
+#8000.837
+sum(vwc_from_vod_cubed_df$annual_storage_vwc_global_unfiltered)
+#6420.823
+
+#compare total values (for same pixel representation)
+vwc_from_vod_cubed_regridded <- resample(vwc_from_vod_cubed,dry_biomass_cubed)
+
+vwc_same_grid_merged <- merge(data.frame(rasterToPoints(vwc_from_vod_cubed_regridded)),
+                              data.frame(rasterToPoints(dry_biomass_cubed)),
+                              by=c('x','y'))
+
+# compare
+sum(vwc_same_grid_merged$annual_storage_vwc_global_unfiltered)
+#6623.222
+sum(vwc_same_grid_merged$aboveground_dry_biomass_density_aggregate_30X)
+#7759.645
+
+#still off by about 1000
+
+#cleanup
+#rm()
+
+#resample so one same exact grid before merging:
+dry_biomass_resampled <- resample(dry_biomass,vwc_from_vod)
+dry_biomass_resampled<-data.frame(rasterToPoints(dry_biomass_df))
 
 
+# in short: assumming water is 50% of total biomass leads to much higher
+# estimates of VWC than VOD
 
-#-------------------------------------------------------------------------------
-# old-----
-#try mergeing as dataframes
-test.vwc.df <- as.data.frame(rasterToPoints(vwc.grassland))
-head(test.vwc.df)
-str(test.vwc.df)
-str(test.grassland.cumulative.transp)
-# test.vwc.df$layer <- test.vwc.df$layer*1000 #you essentially don't need to concert from kg/m^2 to mm/m^2
-# test.vwc.df$layer <- test.vwc.df$layer*.001
+# now compare to the ground-based estimates in forests -----
 
-#merge vwc and T
-merge.vwc.t <- merge(test.vwc.df,test.grassland.cumulative.transp,by=c('x','y'))
-head(merge.vwc.t)
+#import
+ground_estimates <- read.csv('./../../../Data/Water_content/woodwater_empirical_greg.csv')
+#head(ground_estimates)
 
+#narrow down/rename columns
+ground_estimates <-ground_estimates[c('Lat','Long','mean.moisture')]
+colnames(ground_estimates) <- c('y','x','moisture.content')
 
-?resamplelibrary(ggplot2)
+#turn into normally gridded raster
+ground_estimates <-ground_estimates[c(2,1,3)]
+ground_estimates <- na.exclude(ground_estimates)
+ground_estimates <- fix_grid(ground_estimates)
+#plot(ground_estimates)
 
-png('Figures/2016_annual_transit_VWC_density.png',width=8,height=6,units="in",res=400)
-ggplot(transit.all ,aes(x=new,fill=Cover)) +
-  scale_y_continuous(expand = c(0,0),limits = c(0,1.02)) +
-  geom_density(color='black',alpha=0.75,aes(y=..scaled..)) +
-  # scale_fill_manual(values=c('shortgrass_steppe'='green4','northern_mixed_prairies'='lightblue',
-  #                            california_annuals='grey',cold_deserts='gold',hot_deserts='firebrick3'),
-  #                   labels=c('shortgrass_steppe'='Shortgrass steppe','northern_mixed_prairies'='Northern mixed prairies',
-  #                            california_annuals='California annuals',cold_deserts='Cold deserts',hot_deserts='Hot deserts')) +
-  xlab('Transit time of water in aboveground biomass (days)') +
-  ylab('Probability density') +
-  theme(
-    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
-    axis.text.y = element_text(color='black',size=13),
-    axis.title.x = element_text(color='black',size=16),
-    axis.title.y = element_text(color='black',size=19),
-    axis.ticks = element_line(color='black'),
-    legend.key = element_blank(),
-    legend.title = element_blank(),
-    legend.text = element_text(size=8.25),
-    legend.position = c(0.38,0.8),
-    legend.margin =margin(r=5,l=5,t=5,b=5),
-    #legend.position = 'none',
-    strip.background =element_rect(fill="white"),
-    strip.text = element_text(size=10),
-    panel.background = element_rect(fill=NA),
-    panel.border = element_blank(), #make the borders clear in prep for just have two axes
-    axis.line.x = element_line(colour = "black"),
-    axis.line.y = element_line(colour = "black"))
+#re-import biomass data
+dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
+#get veg water in g/m^2:
+
+dry_biomass_only <- dry_biomass_only/10
+
+#1000000 grams = 1 megagram
+dry_biomass_only<-dry_biomass_only*1000000
+
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass_only<-dry_biomass_only/10000
+
+#sinze ground estimates are at coarser resolution, resample to that
+dry_biomass_only <- resample(dry_biomass_only,ground_estimates)
+
+#merge them
+ground_estimates_df <-merge(data.frame(rasterToPoints(ground_estimates)),
+                            data.frame(rasterToPoints(dry_biomass_only)),
+                            by=c('x','y'))
+#head(ground_estimates_df)
+#length(unique(ground_estimates_df$layer)) 
+
+#convert water content to water
+ground_estimates_df$veg_water <- 
+  ground_estimates_df$layer*ground_estimates_df$aboveground_dry_biomass_density_aggregate_30X
+
+#convert from g/m^2 to mm/m^2
+ground_estimates_df$veg_water <- ground_estimates_df$veg_water*.001
+ground_estimates_df <- ground_estimates_df[c(1,2,5)]
+
+#re-import VOD-> VWC raster and turn into data frame
+vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+
+#reample this to the empirical dataset
+vwc_from_vod <- resample(vwc_from_vod,ground_estimates)
+
+#merge with ground-based df
+ground_estimates_df <- merge(ground_estimates_df,data.frame(rasterToPoints(vwc_from_vod)))
+
+png('Figures/Supporting/vod_versus_groundbased_storage.png',
+    width=1000,height=1000,res=150)
+
+plot(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_df,
+     xlab='Ground-based water storage',ylab='VOD-based water storage',cex=4.5)
+# Make 1:1 line
+abline(a=0,b=1,col='black',lwd=3)
+text(7,6,'1:1 line')
 
 dev.off()
+
+summary(lm(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_df))
+
+#see the slope of VOD and VWC....
+head(ground_estimates_df)
+
+#convert back to vod
+ground_estimates_df$vod <- ground_estimates_df$annual_storage_vwc_global_unfiltered*0.11
+summary(lm(vod~veg_water,data=ground_estimates_df))
+#beta paramter = 0.08
+
+
+# compare to ground-based estimates in grasslands ------
+
+
+# Load in poa and herb X2 checked water contet, subset to grasslands
+# units of water content are in gH2O/g dry mass
+
+grassland_wc<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_poa_herbX2.csv')
+head(grassland_wc)
+#100 observations
+
+#get to XYZ format
+grassland_wc <-grassland_wc[c(2,3,4)]
+
+ground_wc_raster <- fix_grid(grassland_wc)
+plot(ground_wc_raster)
+
+#re-import biomass data (repeated code...)
+dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
+#get veg water in g/m^2:
+
+dry_biomass_only <- dry_biomass_only/10
+
+#1000000 grams = 1 megagram
+dry_biomass_only<-dry_biomass_only*1000000
+
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass_only<-dry_biomass_only/10000
+
+#since ground estimates raster show up at coarser resolution, we resample to that
+#this will require aggregation of biomass pixels around the WC pixels
+dry_biomass_only_grassland_wc <- resample(dry_biomass_only,ground_wc_raster)
+#plot(dry_biomass_only_grassland_wc)
+
+#merge them
+ground_estimates_grassland_df <-merge(data.frame(rasterToPoints(ground_wc_raster)),
+                            data.frame(rasterToPoints(dry_biomass_only_grassland_wc)),
+                            by=c('x','y'))
+
+#dim(ground_estimates_grassland_df)
+#still 100 observations.
+
+
+#convert water content to water (in g/m^2)
+ground_estimates_grassland_df$veg_water <- 
+  ground_estimates_grassland_df$layer*ground_estimates_grassland_df$aboveground_dry_biomass_density_aggregate_30X
+
+#head(ground_estimates_grassland_df)
+
+#convert to mm/m^2
+ground_estimates_grassland_df$veg_water <- ground_estimates_grassland_df$veg_water*0.001
+head(ground_estimates_grassland_df)
+
+#re-import VOD-> VWC raster and turn into data frame (repeated code)
+vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+
+#reample this to the empirical dataset
+vwc_from_vod <- resample(vwc_from_vod,ground_wc_raster)
+
+#merge with ground-based df
+ground_estimates_grassland_df <- merge(ground_estimates_grassland_df,
+                             data.frame(rasterToPoints(vwc_from_vod)))
+
+
+#merge with ground-based df
+ground_estimates_grassland_df <- merge(ground_estimates_grassland_df,data.frame(rasterToPoints(vwc_from_vod)))
+
+#filter out things over 2000 g of aboveground biomass because it is unlikely to be a grassland.
+ground_estimates_grassland_df_filtered <- ground_estimates_grassland_df %>%
+  dplyr::filter(aboveground_dry_biomass_density_aggregate_30X < 1000)
+
+#dim(ground_estimates_grassland_df_filtered) #46 observations
+
+cor(ground_estimates_grassland_df_filtered$annual_storage_vwc_global_unfiltered,
+    ground_estimates_grassland_df_filtered$veg_water)
+#0.47
+
+
+png('Figures/Supporting/vod_versus_groundbased_storage_grassland.png',
+    width=1000,height=1000,res=150)
+
+plot(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_grassland_df_filtered,
+     xlab='Ground-based water storage',ylab='VOD-based water storage',cex=4.5)
+# Make 1:1 line
+abline(a=0,b=1,col='black',lwd=3)
+text(3.5,4,'1:1 line')
+
+dev.off()
+
+
+#convert back to vod
+ground_estimates_grassland_df_filtered$vod <- ground_estimates_grassland_df_filtered$annual_storage_vwc_global_unfiltered*0.11
+summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
+#beta parameter = 0.06
 

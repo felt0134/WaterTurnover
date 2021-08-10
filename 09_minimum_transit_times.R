@@ -1,4 +1,5 @@
-# Getting the minimum transit time
+# Getting the minimum transit time, pixel sample size, and do error propagation
+# of dividing storage by T
 
 source('05_Import_Storage_Transp_Data.R')
 test.transp <- rbind(test.tundra,test.cropland,test.forest,test.grassland,test.shrubland)
@@ -8,7 +9,7 @@ test.transp <- rbind(test.tundra,test.cropland,test.forest,test.grassland,test.s
 outfile <- './../../../Data/Derived_data/VWC/'
 #ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
 ecoregion_dir <- dir(outfile, full.names = T)
-ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016
+ecoregion_dir <- ecoregion_dir[-c(1,2,3,15)] #remove december 2016
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
@@ -31,10 +32,10 @@ for(j in ecoregion_dir[1:12]){
 
 test.vwc<-do.call('rbind',vwc.list)
 
-test.grassland.january <- get_monthly_storage_VWC(month='january',land_cover='grassland')
-head(test.grassland.january)
-test.grassland.january <- rasterFromXYZ(test.grassland.january[c(1,2,5)])
-plot(test.grassland.january)
+# test.grassland.january <- get_monthly_storage_VWC(month='january',land_cover='grassland')
+# head(test.grassland.january)
+# test.grassland.january <- rasterFromXYZ(test.grassland.january[c(1,2,5)])
+# plot(test.grassland.january)
 
 
 #loop it
@@ -64,6 +65,7 @@ head(months.grasslands.df)
 rm(months.list.grassland)
 
 #get sample size for each pixel
+
 # grasslands_sample_size <- aggregate(turnover~x+y,length,data=months.grasslands.df)
 # grasslands_sample_size <- rasterFromXYZ(grasslands_sample_size)
 # crs(grasslands_sample_size) <- '+proj=longlat +datum=WGS84'
@@ -74,15 +76,24 @@ rm(months.list.grassland)
 # rm(grasslands_sample_size)
 
 
-#get minimum turnover time for each pixel
-grasslands_minimum_transit<- aggregate(turnover~x+y,min,data=months.grasslands.df)
-grasslands_minimum_transit <- rasterFromXYZ(grasslands_minimum_transit)
-crs(grasslands_minimum_transit) <- '+proj=longlat +datum=WGS84'
-#plot(grasslands_minimum_transit)
-#summary(grasslands_minimum_transit)
-writeRaster(grasslands_minimum_transit,
-            './../../../Data/Derived_Data/Turnover/Minimum/VWC_grasslands_minimum_transit.tif',
+#do error propagation
+
+grassland.prop <- error_prop_division(months.grasslands.df)
+writeRaster(grassland.prop,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif',
             overwrite=TRUE)
+
+
+#get minimum turnover time for each pixel
+
+# grasslands_minimum_transit<- aggregate(turnover~x+y,min,data=months.grasslands.df)
+# grasslands_minimum_transit <- rasterFromXYZ(grasslands_minimum_transit)
+# crs(grasslands_minimum_transit) <- '+proj=longlat +datum=WGS84'
+# #plot(grasslands_minimum_transit)
+# #summary(grasslands_minimum_transit)
+# writeRaster(grasslands_minimum_transit,
+#             './../../../Data/Derived_Data/Turnover/Minimum/VWC_grasslands_minimum_transit.tif',
+#             overwrite=TRUE)
 
 
 #-------------------------------------------------------------------------------
@@ -117,16 +128,23 @@ rm(months.list.forest)
 #             overwrite=TRUE)
 # rm(forests_sample_size)
 
+#do error propagation
+
+forest.prop <- error_prop_division(months.forests.df)
+writeRaster(forest.prop,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif',
+            overwrite=TRUE)
+
 
 #get minimum turnover time for each pixel
-forests_minimum_transit<- aggregate(turnover~x+y,min,data=months.forests.df)
-forests_minimum_transit <- rasterFromXYZ(forests_minimum_transit)
-crs(forests_minimum_transit) <- '+proj=longlat +datum=WGS84'
-#plot(forests_minimum_transit)
-#summary(forests_minimum_transit)
-writeRaster(forests_minimum_transit,
-            './../../../Data/Derived_Data/Turnover/Minimum/VWC_forests_minimum_transit.tif',
-            overwrite=TRUE)
+# forests_minimum_transit<- aggregate(turnover~x+y,min,data=months.forests.df)
+# forests_minimum_transit <- rasterFromXYZ(forests_minimum_transit)
+# crs(forests_minimum_transit) <- '+proj=longlat +datum=WGS84'
+# #plot(forests_minimum_transit)
+# #summary(forests_minimum_transit)
+# writeRaster(forests_minimum_transit,
+#             './../../../Data/Derived_Data/Turnover/Minimum/VWC_forests_minimum_transit.tif',
+#             overwrite=TRUE)
 
 #-------------------------------------------------------------------------------
 #shrublands----
@@ -160,16 +178,23 @@ rm(months.list.shrubland)
 #             overwrite=TRUE)
 # rm(shrublands_sample_size)
 
+#do error propagation
+
+shrubland.prop <- error_prop_division(months.shrublands.df)
+writeRaster(shrubland.prop,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_shrublands_quadrature_rel.tif',
+            overwrite=TRUE)
+
 
 #get minimum turnover time for each pixel
-shrublands_minimum_transit<- aggregate(turnover~x+y,min,data=months.shrublands.df)
-shrublands_minimum_transit <- rasterFromXYZ(shrublands_minimum_transit)
-crs(shrublands_minimum_transit) <- '+proj=longlat +datum=WGS84'
-#plot(shrublands_minimum_transit)
-#summary(shrublands_minimum_transit)
-writeRaster(shrublands_minimum_transit,
-            './../../../Data/Derived_Data/Turnover/Minimum/VWC_shrublands_minimum_transit.tif',
-            overwrite=TRUE)
+# shrublands_minimum_transit<- aggregate(turnover~x+y,min,data=months.shrublands.df)
+# shrublands_minimum_transit <- rasterFromXYZ(shrublands_minimum_transit)
+# crs(shrublands_minimum_transit) <- '+proj=longlat +datum=WGS84'
+# #plot(shrublands_minimum_transit)
+# #summary(shrublands_minimum_transit)
+# writeRaster(shrublands_minimum_transit,
+#             './../../../Data/Derived_Data/Turnover/Minimum/VWC_shrublands_minimum_transit.tif',
+#             overwrite=TRUE)
 
 #-------------------------------------------------------------------------------
 #croplands----
@@ -190,17 +215,24 @@ for(i in month_list){
 }
 
 months.croplands.df <- do.call('rbind',months.list.cropland)
-head(months.croplands.df)
+#head(months.croplands.df)
 
 #get sample size for each pixel
-croplands_sample_size <- aggregate(turnover~x+y,length,data=months.croplands.df)
-croplands_sample_size <- rasterFromXYZ(croplands_sample_size)
-crs(croplands_sample_size) <- '+proj=longlat +datum=WGS84'
-#plot(croplands_sample_size)
-writeRaster(croplands_sample_size,
-            './../../../Data/Derived_Data/Sample_Sizes/VWC_croplands_transit_sample_size.tif',
+# croplands_sample_size <- aggregate(turnover~x+y,length,data=months.croplands.df)
+# croplands_sample_size <- rasterFromXYZ(croplands_sample_size)
+# crs(croplands_sample_size) <- '+proj=longlat +datum=WGS84'
+# #plot(croplands_sample_size)
+# writeRaster(croplands_sample_size,
+#             './../../../Data/Derived_Data/Sample_Sizes/VWC_croplands_transit_sample_size.tif',
+#             overwrite=TRUE)
+# rm(croplands_sample_size)
+
+#do error propagation
+
+cropland.prop <- error_prop_division(months.croplands.df)
+writeRaster(cropland.prop,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_croplands_quadrature_rel.tif',
             overwrite=TRUE)
-rm(croplands_sample_size)
 
 #get minimum turnover time for each pixel
 croplands_minimum_transit<- aggregate(turnover~x+y,min,data=months.croplands.df)
@@ -208,9 +240,9 @@ croplands_minimum_transit <- rasterFromXYZ(croplands_minimum_transit)
 crs(croplands_minimum_transit) <- '+proj=longlat +datum=WGS84'
 #plot(croplands_minimum_transit)
 #summary(croplands_minimum_transit)
-writeRaster(croplands_minimum_transit,
-            './../../../Data/Derived_Data/Turnover/Minimum/VWC_croplands_minimum_transit.tif',
-            overwrite=TRUE)
+# writeRaster(croplands_minimum_transit,
+#             './../../../Data/Derived_Data/Turnover/Minimum/VWC_croplands_minimum_transit.tif',
+#             overwrite=TRUE)
 
 #-------------------------------------------------------------------------------
 #tundra-----
@@ -243,15 +275,23 @@ head(months.tundras.df)
 #             overwrite=TRUE)
 # rm(tundras_sample_size)
 
+#do error propagation
+
+tundra.prop <- error_prop_division(months.tundras.df)
+writeRaster(tundra.prop,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_tundras_quadrature_rel.tif',
+            overwrite=TRUE)
+
 #get minimum turnover time for each pixel
 tundras_minimum_transit<- aggregate(turnover~x+y,min,data=months.tundras.df)
 tundras_minimum_transit <- rasterFromXYZ(tundras_minimum_transit)
 crs(tundras_minimum_transit) <- '+proj=longlat +datum=WGS84'
 #plot(tundras_minimum_transit)
 #summary(tundras_minimum_transit)
-writeRaster(tundras_minimum_transit,
-            './../../../Data/Derived_Data/Turnover/Minimum/VWC_tundras_minimum_transit.tif',
-            overwrite=TRUE)
+# writeRaster(tundras_minimum_transit,
+#             './../../../Data/Derived_Data/Turnover/Minimum/VWC_tundras_minimum_transit.tif',
+#             overwrite=TRUE)
+
 
 #-------------------------------------------------------------------------------
 # combine minimum and sample size raster to produce global raster -----

@@ -1700,4 +1700,60 @@ get_km_cubed <- function(x){
   
 }
 #------------------------------------------------
+# error propogations ------
 
+stderr <- function(x, na.rm=FALSE) {
+  if (na.rm) x <- na.omit(x)
+  sqrt(var(x)/length(x))
+}
+
+
+# num = numerator = storage
+# den = denominator = transpiration
+
+error_prop_division <- function(num,den){
+  
+  #get standard error and relativze by the mean
+  se.storage <- (stderr(num))/mean(num)
+  se.transp <- (stderr(den))/mean(den)
+  
+  se.storage.square
+  
+  uncert <- sqrt((se.storage^2) + (se.transp(2)))
+  
+  return(uncert)
+  
+  
+}
+
+
+
+#standard error divided by mean
+stderr_relative <- function(x) {
+  
+  rel<-stderr(x)
+  rel <- rel/mean(x)
+  return(rel)
+  
+}
+
+error_prop_division <- function(dataset){
+  
+  #df <- as.data.frame(dataset)
+  
+  #get standard error and divide by the mean
+  se.storage.ag <- aggregate(layer~x+y,stderr_relative,data=dataset)
+  se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=dataset)
+  
+  merge.num.den <- merge(se.storage.ag,se.transp,by=c('x','y'))
+  
+  merge.num.den$uncertainty <- sqrt(((merge.num.den$layer)^2)) + 
+    (((merge.num.den$canopy_transpiration_mm_m2)^2))
+  
+  merge.num.den<-rasterFromXYZ(merge.num.den[c(1,2,5)])
+  crs(merge.num.den) <- '+proj=longlat +datum=WGS84'
+  
+  return(merge.num.den)
+  
+  
+}

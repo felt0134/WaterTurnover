@@ -12,7 +12,7 @@
 outfile <- './../../../Data/Derived_data/VWC/'
 #ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
 ecoregion_dir <- dir(outfile, full.names = T)
-ecoregion_dir <- ecoregion_dir[-c(1,2,15)] #remove december 2016
+ecoregion_dir <- ecoregion_dir[-c(1,2,3,15)] #remove december 2016
 
 vwc.list<-list()
 for(j in ecoregion_dir[1:12]){
