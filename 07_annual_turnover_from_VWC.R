@@ -115,6 +115,15 @@ rm(stack.test,transit.grasslands)
 #-------------------------------------------------------------------------------
 #forests ------
 
+#compare
+# test.forest.cumulative.transp.compare <- aggregate(canopy_transpiration_mm_m2~x+y,mean,data=test.forest)
+# test.forest.cumulative.transp.compare$canopy_transpiration_mm_m2 <- test.forest.cumulative.transp.compare$canopy_transpiration_mm_m2/30.5
+# summary(test.forest.cumulative.transp.compare)
+# test.forest.cumulative.transp.compare.2 <- aggregate(canopy_transpiration_mm_m2~x+y,mean,data=test.forest)
+# test.forest.cumulative.transp.compare.2$canopy_transpiration_mm_m2 <- test.forest.cumulative.transp.compare.2$canopy_transpiration_mm_m2/365
+# summary(test.forest.cumulative.transp.compare.2)
+# monthly average approach is higher than annual sum approach
+
 test.forest.cumulative.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sum,data=test.forest)
 # head(test.forest.cumulative.transp)
 # str(test.forest.cumulative.transp)

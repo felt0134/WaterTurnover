@@ -79,6 +79,7 @@ rm(months.list.grassland)
 #do error propagation
 
 grassland.prop <- error_prop_division(months.grasslands.df)
+plot(grassland.prop)
 writeRaster(grassland.prop,
             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif',
             overwrite=TRUE)
@@ -131,6 +132,7 @@ rm(months.list.forest)
 #do error propagation
 
 forest.prop <- error_prop_division(months.forests.df)
+plot(forest.prop)
 writeRaster(forest.prop,
             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif',
             overwrite=TRUE)
@@ -230,6 +232,7 @@ months.croplands.df <- do.call('rbind',months.list.cropland)
 #do error propagation
 
 cropland.prop <- error_prop_division(months.croplands.df)
+summary(cropland.prop)
 writeRaster(cropland.prop,
             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_croplands_quadrature_rel.tif',
             overwrite=TRUE)
@@ -327,3 +330,25 @@ global_transit_ss <- raster::merge(grasslands_transit_ss,forests_transit_ss,
 
 writeRaster(global_transit_ss,'./../../../Data/Derived_Data/Sample_Sizes/VWC_global_transit_sample_size.tif',
             overwrite=TRUE)
+
+#-------------------------------------------------------------------------------
+# combine uncertainty rasters to produce global raster-----
+
+grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
+forests_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif')
+shrublands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_shrublands_quadrature_rel.tif')
+croplands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_croplands_quadrature_rel.tif')
+tundra_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_tundras_quadrature_rel.tif')
+
+
+global_uncertainty <- raster::merge(grasslands_error,forests_error,shrublands_error,
+                                    croplands_error,tundra_error)
+plot(global_uncertainty)
+summary(global_uncertainty)
+
+writeRaster(global_uncertainty,
+            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif',
+            overwrite=TRUE)
+
+
+

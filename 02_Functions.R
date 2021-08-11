@@ -1711,20 +1711,20 @@ stderr <- function(x, na.rm=FALSE) {
 # num = numerator = storage
 # den = denominator = transpiration
 
-error_prop_division <- function(num,den){
-  
-  #get standard error and relativze by the mean
-  se.storage <- (stderr(num))/mean(num)
-  se.transp <- (stderr(den))/mean(den)
-  
-  se.storage.square
-  
-  uncert <- sqrt((se.storage^2) + (se.transp(2)))
-  
-  return(uncert)
-  
-  
-}
+# error_prop_division <- function(num,den){
+#   
+#   #get standard error and relativze by the mean
+#   se.storage <- (stderr(num))/mean(num)
+#   se.transp <- (stderr(den))/mean(den)
+#   
+#   se.storage.square
+#   
+#   uncert <- sqrt((se.storage^2) + (se.transp(2)))
+#   
+#   return(uncert)
+#   
+#   
+# }
 
 
 
@@ -1737,13 +1737,26 @@ stderr_relative <- function(x) {
   
 }
 
+#standard deviation divided by mean
+sd_relative <- function(x) {
+  
+  rel<-sd(x)
+  rel <- rel/mean(x)
+  return(rel)
+  
+}
+
 error_prop_division <- function(dataset){
   
   #df <- as.data.frame(dataset)
   
   #get standard error and divide by the mean
-  se.storage.ag <- aggregate(layer~x+y,stderr_relative,data=dataset)
-  se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=dataset)
+  # se.storage.ag <- aggregate(layer~x+y,stderr_relative,data=dataset)
+  # se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=dataset)
+  
+  #get standard deviation and divide by the mean
+  se.storage.ag <- aggregate(layer~x+y,sd_relative,data=dataset)
+  se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sd_relative,data=dataset)
   
   merge.num.den <- merge(se.storage.ag,se.transp,by=c('x','y'))
   

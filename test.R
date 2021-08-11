@@ -30,6 +30,10 @@ plot(dry_biomass)
 
 dry_biomass<-dry_biomass*.001
 
+#assume water is 0.41 of dry biomass:
+#0.41/0.59
+dry_biomass<-dry_biomass*0.70
+
 
 #import VOD->VWC raster (in mm/m^2) 
 vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
@@ -60,7 +64,7 @@ merge_biomass_vwc_raster <- rasterFromXYZ(merge_biomass_vwc[c(1,2,5)])
 crs(merge_biomass_vwc_raster) <-  '+proj=longlat +datum=WGS84 +no_defs'
 
 #map out the differences
-png('Figures/2016_storage_difference.png',
+png('Figures/2016_storage_difference_0.41.png',
     width=8,height=6,units="in",res=300)
 plot(merge_biomass_vwc_raster,main='VWC difference (biomass-based minus VOD-based)')
 dev.off()
@@ -74,7 +78,7 @@ cor(merge_biomass_vwc$annual_storage_vwc_global_unfiltered,
 #they are highly correlated
 library(scales) #needed for alpha command
 
-png('Figures/Supporting/obs.predicted.model_highres.png',
+png('Figures/Supporting/vwc_versus_biomass_0.41.png',
     width=1000,height=1000,res=150)
 
 plot(merge_biomass_vwc$annual_storage_vwc_global_unfiltered,
@@ -87,6 +91,59 @@ abline(a=0,b=1,col='black',lwd=4)
 text(15,10,'1:1 line')
 
 dev.off()
+
+#can we compare monthly deviations in water storage?
+
+#try for grasslands
+head(merge_biomass_vwc)
+
+#loop it
+
+month_list <- c('january','february','march','april','may','june','july','august',
+                'september','october','november','december')
+#month_list <- 'january'
+store_list<-list()
+
+for( i in month_list){
+
+#create a reference raster to resample to
+months.grasslands.df.july<-subset(months.grasslands.df,month==i) 
+months.grasslands.df.july.raster<-rasterFromXYZ(months.grasslands.df.july[c(1,2,4)])
+#crs(months.grasslands.df.july.raster) <- '+proj=longlat +datum=WGS84'
+
+#resample to match up coordinates, then covert back to a dataframe to merge
+merge_biomass_vwc_raster<- rasterFromXYZ(merge_biomass_vwc[c(1,2,3)])
+#crs(merge_biomass_vwc_raster) <- '+proj=longlat +datum=WGS84'
+merge_biomass_vwc_raster<-resample(merge_biomass_vwc_raster,months.grasslands.df.july.raster)
+merge_biomass_vwc_raster<-data.frame(rasterToPoints(merge_biomass_vwc_raster))
+
+months.grasslands.df.july<-data.frame(rasterToPoints(months.grasslands.df.july.raster))
+months.grasslands.df.july$month = i
+
+#merge
+grasslands_monthly_vwc_biomass_storage <- 
+  merge(merge_biomass_vwc_raster,months.grasslands.df.july,by=c('x','y'))
+
+store_list[[i]] <- grasslands_monthly_vwc_biomass_storage
+  
+}
+
+store_list_df <- do.call('rbind',store_list)
+head(store_list_df)
+store_list_df$diff <- abs(store_list_df$annual_storage_vwc_global_unfiltered -
+                            store_list_df$layer)
+
+storage_deviations <- aggregate(diff~x+y,sd,data=store_list_df)
+
+# Remove NAs
+storage_deviations <- storage_deviations %>%
+  dplyr::filter(!diff=='NA') 
+head(storage_deviations)
+summary(storage_deviations)
+plot(rasterFromXYZ(storage_deviations))
+
+#stopped here 08/11/2021. The grid become irregular. 
+                                                               
 
 
 # compare global amounts of water in cubic km -----
@@ -104,7 +161,9 @@ vwc_from_vod_cubed_df <- data.frame(rasterToPoints(vwc_from_vod_cubed))
 
 #compare total values (allowing pixel rep. to vary among rasters):
 sum(dry_biomass_cubed_df$aboveground_dry_biomass_density_aggregate_30X)
-#8000.837
+#8000.837 when we assuming water is 50% fresh mass
+# 5601.304 when we assuming water is 41% fresh mass
+
 sum(vwc_from_vod_cubed_df$annual_storage_vwc_global_unfiltered)
 #6420.823
 
@@ -306,4 +365,76 @@ dev.off()
 ground_estimates_grassland_df_filtered$vod <- ground_estimates_grassland_df_filtered$annual_storage_vwc_global_unfiltered*0.11
 summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
 #beta parameter = 0.06
+
+
+# estimate uncertainty ------
+
+
+#first do it just for  VWC-based approach based on temporal variation
+
+#relative or fractional basis
+#grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
+
+#absolute basis (multiply fractional uncertainty by turnover)
+global_error_raster <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif')
+global_turnover_raster <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
+plot(global_turnover_raster)
+
+#stack them
+global_error_turnover <- stack(global_error_raster,global_turnover_raster)
+
+#get absolute uncertainty 
+global_error_turnover$abs.unc <- 
+  global_error_turnover$VWC_global_quadrature_rel*global_error_turnover$annual_transit_vwc_global_unfiltered 
+
+summary(global_error_turnover$abs.unc)
+
+#convert to dataframe
+global_error_turnover <- data.frame(rasterToPoints(global_error_turnover))
+head(global_error_turnover)
+summary(global_error_turnover)
+
+#filter out high/extreme values
+head(global_error_turnover)
+global_error_turnover <- global_error_turnover %>%
+  dplyr::filter(annual_transit_vwc_global_unfiltered < 20)
+  dplyr::filter(!abs.unc == 'NA')
+
+summary(global_error_turnover)
+
+plot(rasterFromXYZ(global_error_turnover[c(1,2,5)]))
+plot(abs.unc~annual_transit_vwc_global_unfiltered,data=global_error_turnover)
+hist(global_error_turnover$abs.unc)
+
+#stopped here 8/11/2021
+
+#extra
+grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
+grasslands_turnover <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+grasslands_error <- resample(grasslands_error,grasslands_turnover)
+grasslands_error_2 <- raster::stack(grasslands_error,grasslands_turnover)
+plot(grasslands_error_2)
+grasslands_error_2$unncertainty <- 
+  grasslands_error_2$VWC_grasslands_quadrature_rel*grasslands_error_2$annual_transit_vwc_grassland_unfiltered
+plot(grasslands_error_2)
+summary(grasslands_error_2$unncertainty)
+summary(grasslands_error_2$annual_transit_vwc_grassland_unfiltered)
+
+grasslands_error_df <- data.frame(rasterToPoints(grasslands_error_2))
+head(grasslands_error_df)
+plot(unncertainty~annual_transit_vwc_grassland_unfiltered,data=grasslands_error_df)
+
+#filter out high values
+grasslands_error_df <- grasslands_error_df %>%
+  dplyr::filter(annual_transit_vwc_grassland_unfiltered < 50)
+summary(grasslands_error_df)
+
+#summary(lm(unncertainty~annual_transit_vwc_grassland_unfiltered,data=grasslands_error_df))
+
+plot(rasterFromXYZ(grasslands_error_df[c(1,2,5)]))
+
+#now do it based off of monthly differences in VWC versus Biomass-based estimates
+
+
+
 
