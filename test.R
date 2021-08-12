@@ -378,7 +378,7 @@ summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
 #absolute basis (multiply fractional uncertainty by turnover)
 global_error_raster <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif')
 global_turnover_raster <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
-plot(global_turnover_raster)
+plot(global_error_raster)
 
 #stack them
 global_error_turnover <- stack(global_error_raster,global_turnover_raster)
@@ -435,6 +435,211 @@ plot(rasterFromXYZ(grasslands_error_df[c(1,2,5)]))
 
 #now do it based off of monthly differences in VWC versus Biomass-based estimates
 
+
+
+
+
+# truncate distribution -----
+
+#library(truncdist)
+
+#simply truncate at 95th percentile
+get_turncated_dist <- function(land_cover,annual=T){
+
+#get filepath
+  
+if(annual==T){
+
+filepath<-paste0("./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_",land_cover,"_unfiltered.tif")
+
+}else{
+  
+  
+  filepath<-paste0("./../../../Data/Derived_Data/Turnover/Minimum/VWC_",land_cover,"_minimum_transit.tif")
+  
+}
+
+#load raster
+grasslands_turnover <- raster(filepath)
+
+#convert to dataframe
+grasslands_turnover_df <- data.frame(rasterToPoints(grasslands_turnover))
+colnames(grasslands_turnover_df) <- c('x','y','turnover')
+#head(grasslands_turnover_df)
+
+#turncate right (top 5%)
+high<-round(quantile(grasslands_turnover_df$turnover,
+               probs=0.95),2)
+
+grasslands_turnover_df_truncate <- grasslands_turnover_df %>%
+  dplyr::filter(turnover < high)
+grasslands_turnover_df_truncate$cover <- land_cover
+
+return(grasslands_turnover_df_truncate)
+
+}
+
+#annual turnover
+land_covers <-c('grassland','forest','tundra','croplands','shrubland')
+truncate_list <- list()
+
+for(i in land_covers){
+  
+  truncate_list[[i]]<-get_turncated_dist(i,annual=T)
+  
+}
+
+png('Figures/annualized_transit_ecdfs.png',
+    width=2500,height=2000,res=300)
+
+plot(ecdf(data.frame(truncate_list[1])$grassland.turnover),
+     xlab='Annualized transit time (days)',
+     ylab='Probability density',main='',xlim=c(0,60))
+plot(ecdf(data.frame(truncate_list[2])$forest.turnover),add=TRUE,col='red')
+plot(ecdf(data.frame(truncate_list[3])$tundra.turnover),add=TRUE,col='grey')
+plot(ecdf(data.frame(truncate_list[5])$shrubland.turnover),add=TRUE,col='blue')
+plot(ecdf(data.frame(truncate_list[4])$croplands.turnover),add=TRUE,col='green')
+abline(a=0.5,b=0,lty='dashed',col='grey',lwd=1)
+legend(15, 0.30, legend=c("Grasslands","Forests","Tundras","Shrublands","Croplands"),     
+       col=c("black", "red",'grey','blue',"green"), lty=1.0,lwd=5,cex=1.1,box.lty=0)
+
+dev.off()
+
+#annual turnover (notice now the names are plural because of filepath)
+
+land_covers_minimum <-c('grasslands','forests','tundras','croplands','shrublands')
+truncate_list_minimum <- list()
+
+for(i in land_covers_minimum){
+  
+  truncate_list_minimum[[i]]<-get_turncated_dist(i,annual=F)
+  
+}
+
+
+
+
+png('Figures/minimum_transit_ecdfs.png',
+    width=2500,height=2000,res=300)
+
+plot(ecdf(data.frame(truncate_list_minimum[1])$grasslands.turnover),xlab='Minimum transit time (days)',
+     ylab='Probability density',main='',xlim=c(0,8)) #xlim=c(0,60)
+plot(ecdf(data.frame(truncate_list_minimum[2])$forests.turnover),add=TRUE,col='red')
+plot(ecdf(data.frame(truncate_list_minimum[3])$tundras.turnover),add=TRUE,col='grey')
+plot(ecdf(data.frame(truncate_list_minimum[5])$shrublands.turnover),add=TRUE,col='blue')
+plot(ecdf(data.frame(truncate_list_minimum[4])$croplands.turnover),add=TRUE,col='green')
+abline(a=0.5,b=0,lty='dashed',col='grey',lwd=1)
+legend(4, 0.3, legend=c("Grasslands","Forests","Tundras","Shrublands","Croplands"),     
+       col=c("black", "red",'grey','blue',"green"), lty=1.0,lwd=5,cex=1.1,box.lty=0)
+
+dev.off()
+
+
+#filter uncertainty by truncated dist-------
+global_error_raster <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif')
+
+hist(global_error_raster$VWC_global_quadrature_rel)
+summary(global_error_raster)
+
+rbind_annual_truncated <- do.call("rbind",truncate_list)
+head(rbind_annual_truncated)
+dim(rbind_annual_truncated)
+rbind_annual_truncated<-rasterFromXYZ(rbind_annual_truncated[c(1,2,3)])
+
+land_covers <-c('grassland','forest','tundra','croplands','shrubland')
+trun.annual.list<-list()
+
+for(i in land_covers){
+
+test.trunc <- get_turncated_dist(i,annual=T)
+test.trunc <- rasterFromXYZ(test.trunc[c(1,2,3)])
+crs(test.trunc) <- '+proj=longlat +datum=WGS84'
+
+trun.annual.list[[i]] <- test.trunc
+
+}
+
+global_truncated<-
+  raster::merge(trun.annual.list[1]$grassland,trun.annual.list[2]$forest,
+                trun.annual.list[3]$tundra,trun.annual.list[4]$croplands,
+                trun.annual.list[5]$shrubland)
+plot(global_truncated)
+sd(global_error_truncated$VWC_global_quadrature_rel)
+
+global_error_truncated <- mask(global_error_raster,global_truncated)
+plot(global_error_truncated)
+summary(global_error_truncated)
+hist(global_error_truncated$VWC_global_quadrature_rel)
+
+library("rnaturalearth")
+library("rnaturalearthdata")
+library(ggplot2)
+global_error_truncated_df <- rasterToPoints(global_error_truncated)
+world <- ne_countries(scale = "medium", returnclass = "sf")
+ggplot(data = world) + geom_sf() + 
+  geom_point(data= data.frame(global_error_truncated_df),aes(x=x, y=y, color = VWC_global_quadrature_rel),size=0.1) +
+  scale_color_gradient2(midpoint = 0.58, low = "blue", mid = "white",
+                        high = "red", space = "Lab" )
+
+plot(test.trunc)
+head(test.trunc)
+
+#old------
+#look at ecdf
+hist(grasslands_turnover_df_truncate$turnover)
+plot(ecdf(grasslands_turnover_df_truncate$turnover))
+summary(grasslands_turnover_df_truncate)
+
+mean_turnover<-mean(grasslands_turnover_df_truncate$annual_transit_vwc_grassland_unfiltered)
+sd_turnover<-sd(grasslands_turnover_df_truncate$annual_transit_vwc_grassland_unfiltered)
+toy.df<-rnorm(10000,mean=mean_turnover,sd_turnover)
+y<-dnorm(toy.df,mean=mean_turnover,sd_turnover)
+plot(toy.df,y)
+
+library(truncnorm)
+test=dtruncnorm(toy.df,a=0,b=high,mean=mean_turnover,sd=sd_turnover)
+plot(test)
+
+#y <- dnorm(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
+summary(y)
+new <- dtrunc(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered,
+              spec="norm", a=0, b=high)
+summary(new)
+plot(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered, 
+     new, xlab = "x", ylab = "PDF",xlim=c(0,high))
+  
+plot(new)
+
+
+#get normal distribution of PPT
+mean_ppt<-mean(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
+sd_ppt <- sd(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
+toy.df<-rnorm(10000,mean=mean_ppt,sd_ppt)
+summary(toy.df)
+y<-dnorm(toy.df,mean=mean_ppt,sd_ppt)
+plot(toy.df,y)
+
+
+#from the paper
+
+x <- seq(-3, 3, by = 0.1)
+y1 <- dnorm(x)
+y2 <- dtrunc(x, "norm", a = -0.5, b = 0.5, mean = 0, sd = 2)
+R> y3 <- dtrunc(x, "norm", a = -1, b = 1, mean = 0, sd = 2)
+R> y4 <- dtrunc(x, "norm", a = -2, b = 2, mean = 0, sd = 2)
+yrange <- range(y1, y2, y3, y4)
+plot(x, y1, type = "l", xlab = "x", ylab = "PDF", xlim = c(-3,
+                                                              + 3))
+R> lines(x, y2, lty = 2)
+R> lines(x, y3, lty = 3)
+R> lines(x, y4, lty = 4)
+
+#try to mimic this
+
+
+
+cdf <- ecdf(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
+plot(cdf)
 
 
 
