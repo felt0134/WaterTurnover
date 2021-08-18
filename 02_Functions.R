@@ -1770,3 +1770,40 @@ error_prop_division <- function(dataset){
   
   
 }
+#------------------------------------------------
+# create truncated distribution for each land voer type ----
+
+get_turncated_dist <- function(land_cover,annual=T){
+  
+  #get filepath
+  
+  if(annual==T){
+    
+    filepath<-paste0("./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_",land_cover,"_unfiltered.tif")
+    
+  }else{
+    
+    
+    filepath<-paste0("./../../../Data/Derived_Data/Turnover/Minimum/VWC_",land_cover,"_minimum_transit.tif")
+    
+  }
+  
+  #load raster
+  grasslands_turnover <- raster(filepath)
+  
+  #convert to dataframe
+  grasslands_turnover_df <- data.frame(rasterToPoints(grasslands_turnover))
+  colnames(grasslands_turnover_df) <- c('x','y','turnover')
+  #head(grasslands_turnover_df)
+  
+  #turncate right (top 5%)
+  high<-round(quantile(grasslands_turnover_df$turnover,
+                       probs=0.95),2)
+  
+  grasslands_turnover_df_truncate <- grasslands_turnover_df %>%
+    dplyr::filter(turnover < high)
+  grasslands_turnover_df_truncate$cover <- land_cover
+  
+  return(grasslands_turnover_df_truncate)
+  
+}

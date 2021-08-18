@@ -1,7 +1,7 @@
 
 # generate key derived datasets needed to estimate turnover
 
-# Aggregate Global Biomass Data for year 2010 ----------------------------------------
+# Aggregate Global carbon density for year 2010 ----------------------------------------
 
 #upload original
 aboveground_biomass <- raster('./../../Data/Biomass/Global_Maps_C_Density_2010_1763/data/aboveground_biomass_carbon_2010.tif')
@@ -525,3 +525,26 @@ aboveground_biomass_density_30x_aggregate <- raster::aggregate(aboveground_bioma
 #save to file
 writeRaster(aboveground_biomass_density_30x_aggregate,'./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
 #-------------------------------------------------------------------------------
+# get leaf water content data for tundra land cover ------
+
+tundra_data<-read.csv('./../../../Data/tundra_trait_team/TTT_cleaned_dataset.csv')
+head(tundra_data)
+unique(tundra_data$Trait)
+tundra_ldmc <- subset(tundra_data,
+                      Trait="Leaf dry mass per leaf fresh mass (Leaf dry matter content, LDMC)")
+head(tundra_ldmc)
+hist(tundra_ldmc$Value)
+
+tundra_ldmc_averaged <- aggregate(Value~Latitude + Longitude,mean,data=tundra_ldmc)
+summary(tundra_ldmc_averaged)
+
+
+#unclear to what is mean by fresh mass. How you can have more dry mass than 
+#fresh mass (dry+water) or is fresh mass just water?
+
+#assume LDMC = 1.2 (1.2 g dry mass/1g fresh mass)
+#So it is either:
+#1/1.2 = water divided by dry mass = 0.83 (assuming fresh mass=everything)
+#((1.2+1) -1.2)/(1.2+1) = 0.45 (assuming fresh mass = water)
+#((1.2+1) -1)/(1.2+1) = 0.55 (must be this one?)
+

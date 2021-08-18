@@ -406,7 +406,53 @@ plot(rasterFromXYZ(global_error_turnover[c(1,2,5)]))
 plot(abs.unc~annual_transit_vwc_global_unfiltered,data=global_error_turnover)
 hist(global_error_turnover$abs.unc)
 
+
+
+# just plot the relative (CV?) 
+summary(global_error_raster)
+
+# Make colors
+bks<- c(quantile(data.frame(rasterToPoints(global_error_raster))$VWC_global_quadrature_rel, 
+                 probs=seq(0.0, 0.95, by=0.1), na.rm = TRUE),2)
+#sensitivity=c("purple",'cyan3','green','yellow','orange','red')
+sensitivity=c("blue",'lightblue','orange', 'red')
+bkcols.sensitivity <- c(colorRampPalette(sensitivity)(length(bks)-1),'brown')
+r.range.sens <- round(c(minValue(global_error_raster), maxValue(global_error_raster)),digits=2)
+
+# Update projection
+# proj4string(global_truncated) <- CRS("+proj=longlat")
+# sensitivity_raster_2<-projectRaster(sensitivity_raster, crs=aea.proj)
+
+png('Figures/global_transit_truncated.png',
+    width=2200,height=1000,res=300)
+
+
+# Set up multi-panel plot
+layout(matrix(1:2, ncol=2),pty='s')
+par(oma=c(2,2,2,2), mar=c(0.5, 4, 0.5, 4))
+?par
+#pty='s'
+# Panel label setup
+line = 0.5
+cex = 1.5
+side = 3
+adj= 0.1
+?ifelse
+plot(global_error_raster$VWC_global_quadrature_rel,breaks = bks,axes=F,box=F,
+     col = bkcols.sensitivity,legend=TRUE,
+     legend.width=1, legend.shrink=.75,main='Observed',cex.main=1,
+     axis.args=list(at=seq(r.range.sens[1], r.range.sens[2], 5),
+                    labels=seq(r.range.sens[1], r.range.sens[2], 5),
+                    cex.axis=1.0),
+     legend.args=list(text='', side=4, font=10, line=2.5, cex=0.7))
 #stopped here 8/11/2021
+
+plot(global_error_raster$VWC_global_quadrature_rel,
+     col = ifelse(global_error_raster >1.3,'red','blue'))
+
+
+
+
 
 #extra
 grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
@@ -642,4 +688,15 @@ cdf <- ecdf(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
 plot(cdf)
 
 
+
+
+#-------
+
+
+#make a plot with land cover types colored and add the points where have data
+# for wood water content 
+
+#make some plot of (minimum) transit time with:
+
+# MAT, MAP, aridity, soil moisture
 
