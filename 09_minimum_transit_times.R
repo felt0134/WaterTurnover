@@ -76,14 +76,27 @@ rm(months.list.grassland)
 # rm(grasslands_sample_size)
 
 
-#do error propagation
+#do error propagation: sum in quadrature
 
-grassland.prop <- error_prop_division(months.grasslands.df)
-plot(grassland.prop)
-writeRaster(grassland.prop,
-            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif',
+# grassland.prop <- error_prop_division(months.grasslands.df)
+# plot(grassland.prop)
+# writeRaster(grassland.prop,
+#             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif',
+#             overwrite=TRUE)
+
+#do uncertainty estimate: min/max approach sensu cooley et al.
+
+grassland.uncert.max <- transit_uncert_max(x=months.grasslands.df)
+
+writeRaster(grassland.uncert.max,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_grasslands_max.tif',
             overwrite=TRUE)
 
+grassland.uncert.min <- transit_uncert_min(x=months.grasslands.df)
+
+writeRaster(grassland.uncert.min,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_grasslands_min.tif',
+            overwrite=TRUE)
 
 #get minimum turnover time for each pixel
 
@@ -131,10 +144,22 @@ rm(months.list.forest)
 
 #do error propagation
 
-forest.prop <- error_prop_division(months.forests.df)
-plot(forest.prop)
-writeRaster(forest.prop,
-            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif',
+# forest.prop <- error_prop_division(months.forests.df)
+# plot(forest.prop)
+# writeRaster(forest.prop,
+#             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif',
+#             overwrite=TRUE)
+
+forest.uncert.max <- transit_uncert_max(x=months.forests.df)
+
+writeRaster(forest.uncert.max,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_forests_max.tif',
+            overwrite=TRUE)
+
+forest.uncert.min <- transit_uncert_min(x=months.forests.df)
+
+writeRaster(forest.uncert.min,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_forests_min.tif',
             overwrite=TRUE)
 
 
@@ -182,9 +207,22 @@ rm(months.list.shrubland)
 
 #do error propagation
 
-shrubland.prop <- error_prop_division(months.shrublands.df)
-writeRaster(shrubland.prop,
-            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_shrublands_quadrature_rel.tif',
+# shrubland.prop <- error_prop_division(months.shrublands.df)
+# writeRaster(shrubland.prop,
+#             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_shrublands_quadrature_rel.tif',
+#             overwrite=TRUE)
+
+#minimum to maximum uncertainty 
+shrubland.uncert.max <- transit_uncert_max(x=months.shrublands.df)
+
+writeRaster(shrubland.uncert.max,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_shrublands_max.tif',
+            overwrite=TRUE)
+
+shrubland.uncert.min <- transit_uncert_min(x=months.shrublands.df)
+
+writeRaster(shrubland.uncert.min,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_shrublands_min.tif',
             overwrite=TRUE)
 
 
@@ -229,18 +267,32 @@ months.croplands.df <- do.call('rbind',months.list.cropland)
 #             overwrite=TRUE)
 # rm(croplands_sample_size)
 
-#do error propagation
+#do error propagation:
 
-cropland.prop <- error_prop_division(months.croplands.df)
-summary(cropland.prop)
-writeRaster(cropland.prop,
-            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_croplands_quadrature_rel.tif',
+# cropland.prop <- error_prop_division(months.croplands.df)
+# summary(cropland.prop)
+# writeRaster(cropland.prop,
+#             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_croplands_quadrature_rel.tif',
+#             overwrite=TRUE)
+
+#minimum to maximum uncertainty:
+
+cropland.uncert.max <- transit_uncert_max(x=months.croplands.df)
+
+writeRaster(cropland.uncert.max,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_croplands_max.tif',
+            overwrite=TRUE)
+
+cropland.uncert.min <- transit_uncert_min(x=months.croplands.df)
+
+writeRaster(cropland.uncert.min,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_croplands_min.tif',
             overwrite=TRUE)
 
 #get minimum turnover time for each pixel
-croplands_minimum_transit<- aggregate(turnover~x+y,min,data=months.croplands.df)
-croplands_minimum_transit <- rasterFromXYZ(croplands_minimum_transit)
-crs(croplands_minimum_transit) <- '+proj=longlat +datum=WGS84'
+# croplands_minimum_transit<- aggregate(turnover~x+y,min,data=months.croplands.df)
+# croplands_minimum_transit <- rasterFromXYZ(croplands_minimum_transit)
+# crs(croplands_minimum_transit) <- '+proj=longlat +datum=WGS84'
 #plot(croplands_minimum_transit)
 #summary(croplands_minimum_transit)
 # writeRaster(croplands_minimum_transit,
@@ -278,17 +330,31 @@ head(months.tundras.df)
 #             overwrite=TRUE)
 # rm(tundras_sample_size)
 
-#do error propagation
+#do error propagation:
 
-tundra.prop <- error_prop_division(months.tundras.df)
-writeRaster(tundra.prop,
-            './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_tundras_quadrature_rel.tif',
+# tundra.prop <- error_prop_division(months.tundras.df)
+# writeRaster(tundra.prop,
+#             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_tundras_quadrature_rel.tif',
+#             overwrite=TRUE)
+
+#minimum to maximum uncertainty:
+
+tundra.uncert.max <- transit_uncert_max(x=months.tundras.df)
+
+writeRaster(tundra.uncert.max,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_tundras_max.tif',
+            overwrite=TRUE)
+
+tundra.uncert.min <- transit_uncert_min(x=months.tundras.df)
+
+writeRaster(tundra.uncert.min,
+            './../../../Data/Derived_Data/Uncertainty/min_max/VWC_tundras_min.tif',
             overwrite=TRUE)
 
 #get minimum turnover time for each pixel
-tundras_minimum_transit<- aggregate(turnover~x+y,min,data=months.tundras.df)
-tundras_minimum_transit <- rasterFromXYZ(tundras_minimum_transit)
-crs(tundras_minimum_transit) <- '+proj=longlat +datum=WGS84'
+# tundras_minimum_transit<- aggregate(turnover~x+y,min,data=months.tundras.df)
+# tundras_minimum_transit <- rasterFromXYZ(tundras_minimum_transit)
+# crs(tundras_minimum_transit) <- '+proj=longlat +datum=WGS84'
 #plot(tundras_minimum_transit)
 #summary(tundras_minimum_transit)
 # writeRaster(tundras_minimum_transit,
@@ -297,7 +363,7 @@ crs(tundras_minimum_transit) <- '+proj=longlat +datum=WGS84'
 
 
 #-------------------------------------------------------------------------------
-# combine minimum and sample size raster to produce global raster -----
+# combine minimum transit time to produce global raster -----
 
 #minimum transit time
 grasslands_min <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_grasslands_minimum_transit.tif')
@@ -313,6 +379,8 @@ global_min <- raster::merge(grasslands_min,forests_min,shrublands_min,croplands_
 writeRaster(global_min,'./../../../Data/Derived_Data/Turnover/Minimum/VWC_global_minimum_transit.tif',
             overwrite=TRUE)
 
+#-------------------------------------------------------------------------------
+# combine samples sizes (#months) to produce global raster -----
 
 # sample sizes of transit time
 
@@ -332,7 +400,7 @@ writeRaster(global_transit_ss,'./../../../Data/Derived_Data/Sample_Sizes/VWC_glo
             overwrite=TRUE)
 
 #-------------------------------------------------------------------------------
-# combine uncertainty rasters to produce global raster-----
+# combine uncertainty in quadrature rasters to produce global raster-----
 
 grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
 forests_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_forests_quadrature_rel.tif')
@@ -349,6 +417,16 @@ summary(global_uncertainty)
 writeRaster(global_uncertainty,
             './../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif',
             overwrite=TRUE)
+
+hist(grasslands_error$VWC_grasslands_quadrature_rel,col='green')
+hist(croplands_error$VWC_croplands_quadrature_rel,add=T,col='yellow')
+hist(forests_error$VWC_forests_quadrature_rel,add=T,col='blue')
+hist(shrublands_error$VWC_shrublands_quadrature_rel,add=T,col='grey')
+hist(tundra_error$VWC_tundras_quadrature_rel,add=T,col='gold')
+
+
+#-------------------------------------------------------------------------------
+# combine uncertainty in max-min range rasters to produce global raster ----
 
 
 

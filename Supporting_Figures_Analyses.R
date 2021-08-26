@@ -3,7 +3,7 @@
 
 # per-pixel sample size for transit time ------
 
-
+#global map of sample size
 
 transit_sample_size <- raster('./../../../Data/Derived_Data/Sample_Sizes/VWC_global_transit_sample_size.tif')
 
@@ -12,6 +12,49 @@ png('Figures/Supporting/transit_time_sample_size.png',
 plot(transit_sample_size,main='Sample Size (Number of months)')
 
 dev.off()
+
+#boxplots of land sample size by land cover type
+
+land_cover <-c('grasslands','forests','tundras','croplands','shrublands')
+sample.size<-list()
+
+for(i in land_cover){
+  
+  
+  ss_df <- 
+    data.frame(rasterToPoints(raster(paste0("./../../../Data/Derived_Data/Sample_Sizes/VWC_",i,"_transit_sample_size.tif"))))
+  ss_df$land_cover <- i
+  colnames(ss_df) <-c('x','y','count', 'land_cover')
+  
+  sample.size[[i]] <- ss_df
+  
+}
+
+sample.size.df <- do.call('rbind',sample.size)
+head(sample.size.df)
+
+png('Figures/Supporting/transit_time_sample_size_two_panel.png',
+    width=11,height=6,units="in",res=400)
+
+line = 0.5
+cex = 1.5
+side = 3
+adj= -0.1
+
+layout(matrix(1:2, ncol=2))
+par(oma=c(4.5,2,2,2), mar=c(1, 5, 1, 2),pty='s')
+
+plot(transit_sample_size,main='Sample Size (number of months)',box=F)
+mtext("A", side=side, line=line, cex=cex, adj=adj)
+
+boxplot(count~land_cover,data=sample.size.df,ylab='Sample size (number of months)',
+        xlab='',las=2)
+mtext("B", side=side, line=line, cex=cex, adj=adj)
+
+dev.off()
+
+
+
 #-------------------------------------------------------------------------------
 #map out points of water content -----
 

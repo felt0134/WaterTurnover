@@ -367,7 +367,7 @@ summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
 #beta parameter = 0.06
 
 
-# estimate uncertainty ------
+# estimate uncertainty: sum in quadrature ------
 
 
 #first do it just for  VWC-based approach based on temporal variation
@@ -378,7 +378,6 @@ summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
 #absolute basis (multiply fractional uncertainty by turnover)
 global_error_raster <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif')
 global_turnover_raster <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_global_unfiltered.tif')
-plot(global_error_raster)
 
 #stack them
 global_error_turnover <- stack(global_error_raster,global_turnover_raster)
@@ -484,6 +483,39 @@ plot(rasterFromXYZ(grasslands_error_df[c(1,2,5)]))
 
 
 
+
+# estimate uncertainty: max-min approach-----
+
+land_cover <-c('grasslands','forests','tundras','croplands','shrublands')
+uncertainty.range.list<-list()
+
+for(i in land_cover){
+  
+  min_raster <- 
+    data.frame(rasterToPoints(raster(paste0("./../../../Data/Derived_Data/Uncertainty/min_max/VWC_",i,"_min.tif"))))
+  colnames(min_raster) <- c('x','y','min')
+  
+  max_raster <- 
+    data.frame(rasterToPoints(raster(paste0("./../../../Data/Derived_Data/Uncertainty/min_max/VWC_",i,"_max.tif"))))
+  colnames(max_raster) <- c('x','y','max')
+  
+  merged <- merge(min_raster,max_raster,by=c('x','y'))
+  
+  merged$range <- merged$max - merged$min
+  merged<- rasterFromXYZ(merged[c(1,2,5)])
+  crs(merged) <- '+proj=longlat +datum=WGS84'
+  
+  uncertainty.range.list[[i]] <- merged
+  
+}
+
+test.merge <- raster::merge(uncertainty.range.list$grasslands,
+                            uncertainty.range.list$forests,
+                            uncertainty.range.list$tundras,
+                            uncertainty.range.list$croplands,
+                            uncertainty.range.list$shrublands)
+plot(log(test.merge))
+summary(test.merge)
 
 # truncate distribution -----
 

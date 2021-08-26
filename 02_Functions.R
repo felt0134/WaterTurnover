@@ -1779,12 +1779,12 @@ get_turncated_dist <- function(land_cover,annual=T){
   
   if(annual==T){
     
-    filepath<-paste0("./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_",land_cover,"_unfiltered.tif")
+    filepath<-paste0("./../../../Data/Derived_data/Turnover/Annual/annual_transit_vwc_",land_cover,"_unfiltered.tif")
     
   }else{
     
     
-    filepath<-paste0("./../../../Data/Derived_Data/Turnover/Minimum/VWC_",land_cover,"_minimum_transit.tif")
+    filepath<-paste0("./../../../Data/Derived_data/Turnover/Minimum/VWC_",land_cover,"_minimum_transit.tif")
     
   }
   
@@ -1805,5 +1805,83 @@ get_turncated_dist <- function(land_cover,annual=T){
   grasslands_turnover_df_truncate$cover <- land_cover
   
   return(grasslands_turnover_df_truncate)
+  
+}
+
+#------------------------------------------------
+# Transit uncertainty by comparing minimum nd maximum bounds for each pixel-----
+
+#uncertainty max numerator min denominator:
+transit_uncert_max <- function(x){
+  
+  #if(max==T){
+  
+  maximum_storage <- aggregate(layer~x+y,max,data=x)
+  minimum_transp <- aggregate(canopy_transpiration_mm_m2~x+y,min,data=x)
+  merged <- merge(maximum_storage,minimum_transp,by=c('x','y'))
+  
+  merged$uncertainty <- merged$layer/merged$canopy_transpiration_mm_m2
+  
+  merged <- merged %>%
+    dplyr::filter(!uncertainty=='Inf')
+  
+  merged<-rasterFromXYZ(merged[c(1,2,5)])
+  
+  crs(merged) <- '+proj=longlat +datum=WGS84'
+  
+  return(merged)
+  
+  
+}
+
+#uncertainty min numerator max denominator:
+transit_uncert_min <- function(x){
+  
+  minimum_storage <- aggregate(layer~x+y,min,data=x)
+  maximum_transp <- aggregate(canopy_transpiration_mm_m2~x+y,max,data=x)
+  merged <- merge(minimum_storage,maximum_transp,by=c('x','y'))
+  
+  
+  merged$uncertainty <- merged$layer/merged$canopy_transpiration_mm_m2
+  
+  merged <- merged %>%
+    dplyr::filter(!uncertainty=='Inf')
+  
+  merged<-rasterFromXYZ(merged[c(1,2,5)])
+  
+  crs(merged) <- '+proj=longlat +datum=WGS84'
+  
+  return(merged)
+  
+  
+}
+
+#------------------------------------------------
+# Turn nc irregular grid into a regular grid usuing expand grid approach -----
+
+
+raster_from_nc_expand_grid <- function(file,variable){
+  
+  #load file
+  nc_data <- nc_open(file)
+  
+  # Longitude 
+  lon <- ncvar_get(nc_data ,"lon")
+  dim(lon)
+  # Latitude 
+  lat <- ncvar_get(nc_data ,"lat")
+  dim(lat)
+  # Variable
+  var <- ncvar_get(nc_data,variable)
+  
+  #convert to raster
+  latlong = expand.grid(long=lon, lat=lat)
+  latlong = data.frame(cbind(latlong, aridity = c(var)))
+  latlong = na.exclude(latlong)
+  colnames(latlong) <- c('x','y',variable)
+  
+  latlong <- fix_grid(latlong)
+  
+  return(latlong)
   
 }

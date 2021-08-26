@@ -1,108 +1,230 @@
-# uncertainty propagation
 
-#standard error
-stderr <- function(x, na.rm=FALSE) {
-  if (na.rm) x <- na.omit(x)
-  sqrt(var(x)/length(x))
+load_et_by_filepath<-function(x,process){
+  #https://gis.stackexchange.com/questions/386628/working-with-irregularly-spaced-gridded-netcdf-data-in-r
+  
+  #vector memory limit gets reached with the expand grid approach for the ET data but not the climate data.
+  #can use the expand grid approach to get the climate data on a regular grid because it is simpler
+  # and works betetr than the dataframe-based approach with the T data.
+  
+  #open netcdf file
+  nc_data <- nc_open('./../../../Data/climate/aridity.nc')
+  #nc_data <- nc_open('./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/PTJPL_SMAP_ET_201504_mean.nc')
+  
+  raster_from_nc_expand_grid <- function(file,variable){
+  
+  #load file
+  nc_data <- nc_open(file)
+    
+  # Longitude 
+  lon <- ncvar_get(nc_data ,"lon")
+  dim(lon)
+  # Latitude 
+  lat <- ncvar_get(nc_data ,"lat")
+  dim(lat)
+  # Variable
+  var <- ncvar_get(nc_data,variable)
+  
+  #convert to raster
+  latlong = expand.grid(long=lon, lat=lat)
+  latlong = data.frame(cbind(latlong, aridity = c(var)))
+  latlong = na.exclude(latlong)
+  colnames(latlong) <- c('x','y',variable)
+  
+  latlong <- fix_grid(latlong)
+  
+  return(latlong)
+  
+  }
+  
+  #re-gridded aridity 
+  mean_aridity <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
+                                     'aridity20yrs')
+  #save
+  writeRaster(mean_aridity,'./../../../Data/Derived_data/Climate/mean_aridity.tif')
+  
+  
+  plot(test)
+  
+  
+  nc_data <- nc_open('./../../../Data/climate/aridity.nc')
+  
+  # Longitude 
+  lon <- ncvar_get(nc_data ,"lon")
+  
+  # Latitude 
+  lat <- ncvar_get(nc_data ,"lat")
+  
+  # Variable
+  var <- ncvar_get(nc_data,'aridity20yrs')
+  
+  #convert to raster
+  latlong = expand.grid(long=lon, lat=lat)
+  latlong = data.frame(cbind(latlong, aridity = c(var)))
+  
+  dim(latlong)
+  
+  dim(latlong)
+  
+  plot(latlong)
+  
+  
+  
+  
+  fix_grid_2<-function(x){
+    
+    e<-extent(x[c(1:2)])
+    r<-raster(e,ncol=1000,nrow=1000,crs='+proj=longlat +datum=WGS84')
+    r_new<-rasterize(x[,1:2],r,x[3],fun=mean)
+    return(r_new)
+    
+  }
+  
+  
+  
+  
+  
+  # old ----
+  rasterFromXYZ(latlong)
+  
+  latlong = expand.grid(long=lon, lat=lat)
+  latlong = data.frame(cbind(latlong, aridity = c(ET)))
+  colnames(latlong) <- c('x','y','z')
+  latlong<-na.omit(latlong)
+  latlong <- fix_grid(latlong)
+  r_new<-rasterize(latlong[,1:2],latlong[3],fun=mean)
+  plot(latlong$long,latlong$lat)
+  extent(latlong[c(1:2)])
+  aridity_raster <- fix_grid(latlong)
+  aridity_raster <-resample(aridity_raster,biomass)
+  plot(aridity_raster)
+  
+  coordinates(latlong)=~long+lat
+  crs(latlong) <- '+proj=longlat +datum=WGS84'
+  plot(raster(latlong))
+  spplot(latlong,"PM25")
+  
+  # get longitude and latitude
+  
+  # Longitude 
+  lon <- ncvar_get(nc_data ,"lon")
+  nlon <- dim(lon)
+  lon.df<-as.data.frame(lon)
+  #head(lon.df)
+  
+  lon.df$ID <- rownames(lon.df)
+  #summary(lon.df)
+  
+  lon.df.melted <- reshape2::melt(lon.df, 
+                                  id.vars = c("ID"),
+                                  variable.name = "lon")
+  
+  #head(lon.df.melted)
+  
+  #make unique column ID
+  lon.df.melted$RegionSite <- paste0(lon.df.melted$ID,lon.df.melted$lon)
+  
+  #check no duplicates
+  # dim(lon.df.melted)
+  # length(unique(lon.df.melted$RegionSite))
+  
+  lon.df.melted <- lon.df.melted[-c(1,2)]
+  colnames(lon.df.melted) <- c('x','ID')
+  
+  #head(lon.df.melted)
+  
+  # Latitude #
+  lat <- ncvar_get(nc_data ,"lat")
+  nlat <- dim(lat)
+  
+  # Covert to data frame
+  lat.df<-as.data.frame(lat)
+  head(lat.df)
+  #head(lat.df)
+  
+  lat.df$ID <- rownames(lat.df)
+  #summary(lat.df)
+  
+  lat.df.melted <- reshape2::melt(lat.df, 
+                                  id.vars = c("ID"),
+                                  variable.name = "lat")
+  
+  
+  #head(lat.df.melted)
+  
+  #make unique column ID
+  lat.df.melted$RegionSite <- paste0(lat.df.melted$ID,lat.df.melted$lat)
+  
+  lat.df.melted <- lat.df.melted[-c(1,2)]
+  colnames(lat.df.melted) <- c('y','ID')
+  
+  
+  lat.df.melted$ID <- gsub('lat','',lat.df.melted$ID)
+  lon.df.melted$ID <- gsub('lon','',lon.df.melted$ID)
+  
+  head(lat.df.melted)
+  head(lon.df.melted)
+  
+  #merge lat and long
+  lat_lon <- merge(lat.df.melted,lon.df.melted,by=c('ID'))
+  #head(lat_lon)
+  
+  #re-order columns
+  lat_lon_order <- c("x", "y", "ID")
+  lat_lon <- lat_lon[, lat_lon_order]
+  #head(lat_lon)
+  
+  lat_lon$ID <- 1
+  lat_long_raster <- fix_grid(lat_lon)
+  plot(lat_long_raster)
+  
+  # Get ET #
+  ET <- ncvar_get(nc_data,'SMAPcanopy_transpiration')
+  # fix.aridity<- fix_grid(data.frame(rasterToPoints(ET)))
+  # plot(fix.aridity)
+  # biomass<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+  # fix.aridity <- resample(fix.aridity,biomass)
+  
+  #head(ET)
+  #summary(ET)
+  #str(ET)
+  
+  ET.df<-as.data.frame(ET)
+  #head(ET.df)
+  
+  ET.df$ID <- rownames(ET.df)
+  #summary(ET.df)
+  
+  ET.df.melted <- reshape2::melt(ET.df, 
+                                 id.vars = c("ID"),
+                                 variable.name = "ET")
+  #head(ET.df.melted)
+  hist(ET.df.melted$value)
+  
+  #make unique column ID
+  ET.df.melted$RegionSite <- paste0(ET.df.melted$ID,ET.df.melted$ET)
+  
+  ET.df.melted <- ET.df.melted[-c(1,2)]
+  colnames(ET.df.melted) <- c('ET','ID')
+  ET.df.melted$ID <- gsub('V1','',ET.df.melted$ID)
+  #head(ET.df.melted)
+  
+  # Merge with lat/lon data frame
+  
+  lat_lon_et <- merge (lat_lon,ET.df.melted,by=c('ID'))
+  summary(lat_lon_et)
+  
+  # Turn into raster
+  lat_lon_et_na_rm <- na.omit(lat_lon_et)
+  lat_lon_et_na_rm <- data.frame(lat_lon_et_na_rm[c(2,3,4)])
+  lat_lon_et_raster <-fix_grid(lat_lon_et_na_rm)
+  
+  plot(lat_lon_et$x,lat_lon_et$y)
+  # cleanup
+  rm(lat,lon,lat.df,lon.df,lat.df.melted,lon.df.melted,
+     lat_lon_et,lat_lon,ET.df,ET.df.melted,ET,nc_data)
+  
+  
+  return(lat_lon_et_na_rm)
+  
 }
-
-
-# num = numerator = storage
-# den = denominator = transpiration
-
-error_prop_division <- function(num,den){
-  
-  #get standard error and relativze by the mean
-  se.storage <- (stderr(num))/mean(num)
-  se.transp <- (stderr(den))/mean(den)
-  
-  se.storage.square
-  
-  uncert <- sqrt((se.storage^2) + (se.transp(2)))
-  
-  return(uncert)
-  
-  
-}
-
-
-
-#standard error divided by mean
-stderr_relative <- function(x) {
-  
-  rel<-stderr(x)
-  rel <- rel/mean(x)
-  return(rel)
-  
-}
-
-error_prop_division <- function(dataset){
-  
-  #df <- as.data.frame(dataset)
-  
-  #get standard error and divide by the mean
-  se.storage.ag <- aggregate(layer~x+y,stderr_relative,data=dataset)
-  se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=dataset)
-  
-  merge.num.den <- merge(se.storage.ag,se.transp,by=c('x','y'))
-  
-  merge.num.den$uncertainty <- sqrt(((merge.num.den$layer)^2)) + 
-    (((merge.num.den$canopy_transpiration_mm_m2)^2))
-  
-  merge.num.den<-rasterFromXYZ(merge.num.den[c(1,2,5)])
-  crs(merge.num.den) <- '+proj=longlat +datum=WGS84'
-  
-  return(merge.num.den)
-  
-  
-}
-
-test.prop <- error_prop_division(months.grasslands.df)
-head(test.prop)
-plot(rasterFromXYZ(test.prop))
-hist(test.prop$uncertainty)
-
-head(months.grasslands.df)
-
-se.storage.ag.test <- aggregate(layer~x+y,stderr_relative,data=months.grasslands.df)
-se.transp.test <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=months.grasslands.df)
-
-merge.num.den.test <- merge(se.storage.ag.test,se.transp.test,by=c('x','y'))
-
-merge.num.den.test$uncertainty <- sqrt(((merge.num.den.test$layer)^2)) + 
-  (((merge.num.den.test$canopy_transpiration_mm_m2)^2))
-
-
-merge.num.den.test <- merge(merge.num.den.test[c(1,2,5)],months.grasslands.df,by=c('x','y'))
-head(merge.num.den.test)
-summary(merge.num.den.test)
-merge.num.den.test.raster <- rasterFromXYZ(merge.num.den.test[c(1,2,3)])
-crs(merge.num.den.test.raster) <- '+proj=longlat +datum=WGS84'
-plot(merge.num.den.test.raster)
-
-grasslands_annual<-raster( './../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
-
-#resample to grasslands
-merge.num.den.test.raster <- resample(merge.num.den.test.raster,grasslands_annual)
-
-#shift to dataframe
-grasslands_annual<-data.frame(rasterToPoints(grasslands_annual))
-head(grasslands_annual)
-summary(grasslands_annual)
-
-merge.num.den.test <- merge(data.frame(rasterToPoints(grasslands_annual)),
-                            data.frame(rasterToPoints(merge.num.den.test.raster)),by=c('x','y'))
-head(merge.num.den.test)
-merge.num.den.test$uncertainty <- 
-  merge.num.den.test$annual_transit_vwc_grassland_unfiltered*merge.num.den.test$uncertainty
-
-plot(rasterFromXYZ(merge.num.den.test[c(1,2,4)]))
-summary(merge.num.den.test)
-
-plot(merge.num.den.test$annual_transit_vwc_grassland_unfiltered,merge.num.den.test$uncertainty)
-
-filtered <- merge.num.den.test %>%
-  dplyr::filter(annual_transit_vwc_grassland_unfiltered<20)
-plot(rasterFromXYZ(filtered[c(1,2,4)]))
-  
 

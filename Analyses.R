@@ -580,3 +580,240 @@ sum(test$annual_storage_vwc_global_unfiltered)
 
 
 
+
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#------------    Climate correlations     --------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+#spatial modeling reference:
+#https://crd230.github.io/lab8.html
+
+#aridity classification reference:
+#https://wad.jrc.ec.europa.eu/sites/default/files/subchapters/9_1_Aridity/91_aridity_table.jpg
+
+#load data
+aridity <- raster('./../../../Data/Derived_data/Climate/mean_aridity.tif')
+
+#annual turnover: truncate the distributions for each land cover type
+land_covers <-c('grassland','forest','tundra','croplands','shrubland')
+trun.annual.list<-list()
+
+for(i in land_covers){
+  
+  test.trunc <- get_turncated_dist(i,annual=T)
+  test.trunc <- rasterFromXYZ(test.trunc[c(1,2,3)])
+  crs(test.trunc) <- '+proj=longlat +datum=WGS84'
+  
+  trun.annual.list[[i]] <- test.trunc
+  
+}
+
+global_truncated<-
+  raster::merge(trun.annual.list[1]$grassland,trun.annual.list[2]$forest,
+                trun.annual.list[3]$tundra,trun.annual.list[4]$croplands,
+                trun.annual.list[5]$shrubland)
+plot(global_truncated)
+
+#resample
+aridity<-resample(aridity,global_truncated)
+plot(aridity)
+
+#convert to dataframes and and merge
+
+aridity_df <- data.frame(rasterToPoints(aridity))
+head(aridity_df)
+
+annual_turnover_df <- data.frame(rasterToPoints(global_truncated))
+head(annual_turnover_df)
+
+annual_turnover_aridity <- merge(annual_turnover_df,aridity_df,by=c('x','y'))
+head(annual_turnover_aridity)
+
+#stratify by latitude 
+library(splitstackshape)
+test.strat<-stratified(annual_turnover_aridity, c("y"), 0.001)
+head(test.strat)
+
+#look to see the dimension reduction
+# xyzSP <- SpatialPointsDataFrame(coords = data.frame(test.strat)[,1:2], 
+#                                 data = data.frame(test.strat), 
+#                                 proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+#plot and save this
+
+# png('Figures/Supporting/water_content_sample_distributions.png',
+#     width=8,height=6,units="in",res=400)
+# plot(xyzSP,cex=0.1)
+# dev.off()
+
+library(car)
+plot(layer~mean_aridity,data=test.strat)
+
+#log transform to meet assumptions
+annual_transit_aridity_lm<-lm(log(layer)~mean_aridity,data=test.strat)
+round(coef(summary(annual_transit_aridity_lm))[1],2)
+#plot(annual_transit_aridity_lm)
+outliers <- outlierTest(annual_transit_aridity_lm)
+
+#now do a loop
+
+# mean_aridity_annual_turnover_loop <-list()
+# 
+# 
+# for(i in 1:1000){
+#   
+#   #stratify by latitude
+#   test.strat<-stratified(annual_turnover_aridity, c("y"), 0.001)
+#   
+#   #run model (log transformed to meet assumptions)
+#   annual_transit_aridity_lm<-lm(log(layer)~mean_aridity,data=test.strat)
+#   
+#   #extract and store the slope
+#   mean_aridity_annual_turnover_loop[[i]] <- round(coef(summary(annual_transit_aridity_lm))[1],2)
+#   
+#   
+# }
+#   
+# #convert list of slopes into a data frame
+# mean_aridity_annual_turnover_loop_df <- data.frame(do.call('rbind',mean_aridity_annual_turnover_loop))
+# head(mean_aridity_annual_turnover_loop_df)
+# colnames(mean_aridity_annual_turnover_loop_df) <- 'slope'
+# hist(mean_aridity_annual_turnover_loop_df$slope)
+
+cor(test.strat$layer,test.strat$mean_aridity)
+#0.039
+# Suggests positive effect (less arid = longer turnover, but that the effect
+# is weak and explains little variation in annual turnover)
+
+
+#test for spatial autocorrelation in model residuals and run spatial model
+
+test.strat<-stratified(annual_turnover_aridity, c("y"), 0.001)
+annual_transit_aridity_lm<-lm(log(layer)~mean_aridity,data=test.strat)
+round(coef(summary(annual_transit_aridity_lm))[1],2)
+test.strat$Yresid <- resid(annual_transit_aridity_lm)
+#plot(annual_transit_aridity_lm)
+
+library(gstat)
+library(spdep)
+
+Vout<-variogram(Yresid~1,loc=~x+y, width=.05,data=test.strat) ###calculate a variogram using the data. this will take a few minutes if the full dataset
+plot(Vout$dist,Vout$gamma,xlab='Distance (Deg)', ylab='Semivariance',main='',cex.lab=1.5, cex.main=2, pch=19, cex=.5)
+#suggests some autocorrelation, mostly at relatively close distances (globally speaking)
+
+#prep spatial weights
+poly.resids<-rasterToPolygons(rasterFromXYZ(test.strat[,c(1,2,5)]))
+nb <- poly2nb(poly.resids, queen=TRUE)
+lw <- nb2listw(nb, style="W", zero.policy=TRUE)
+#lw$weights
+
+moran.test(poly.resids$Yresid, lw, alternative="greater",zero.policy=TRUE)
+#suggests no autocorrelation
+moran.mc(poly.resids$Yresid, lw,nsim=999, alternative="greater",zero.policy=TRUE)
+# suggests autocorrelation
+
+#do spatial regression
+library(spatialreg)
+
+#spatial error model
+spatial_error <- errorsarlm(log(layer)~mean_aridity,data=test.strat,listw = lw,
+                            zero.policy = T)
+summary(spatial_error)
+#coef(spatial_error)
+
+#now see if this gets rd of the autocorrelation
+test.strat$resid_lag <- resid(spatial_error)
+Vout_lag<-variogram(resid_lag~1,loc=~x+y, width=.05,data=test.strat) ###calculate a variogram using the data. this will take a few minutes if the full dataset
+plot(Vout_lag$dist,Vout_lag$gamma,xlab='Distance (Deg)', ylab='Semivariance',main='',cex.lab=1.5, cex.main=2, pch=19, cex=.5)
+
+#spatial lag model
+spatial_lag<-lagsarlm(log(layer)~mean_aridity,data=test.strat,lw,zero.policy = T)
+summary(spatial_lag)
+
+#overall, there is a weak, positive effect such that as aridity decreases turnover time
+# increases. or, as aridity increases, turnover time decreases.
+
+#
+#
+
+
+# now do minimum transit time
+aridity <- raster('./../../../Data/Derived_data/Climate/mean_aridity.tif')
+
+trun.minimum.list<-list()
+land_covers_2 <- c("grasslands","forests","tundras","croplands","shrublands")
+
+for(i in land_covers_2){
+  
+  test.trunc <- get_turncated_dist(i,annual=F)
+  test.trunc <- rasterFromXYZ(test.trunc[c(1,2,3)])
+  crs(test.trunc) <- '+proj=longlat +datum=WGS84'
+  
+  trun.minimum.list[[i]] <- test.trunc
+  
+}
+
+global_truncated_minimum <-
+  raster::merge(trun.minimum.list[1]$grassland,trun.minimum.list[2]$forest,
+                trun.minimum.list[3]$tundra,trun.minimum.list[4]$croplands,
+                trun.minimum.list[5]$shrubland)
+plot(global_truncated_minimum)
+
+#resample
+aridity_min<-resample(aridity,global_truncated_minimum)
+plot(aridity)
+
+#convert to dataframes and and merge
+
+aridity_min_df <- data.frame(rasterToPoints(aridity_min))
+head(aridity_min_df)
+
+annual_turnover_min_df <- data.frame(rasterToPoints(global_truncated_minimum))
+head(annual_turnover_min_df)
+
+annual_turnover_min_aridity <- merge(annual_turnover_min_df,aridity_min_df,by=c('x','y'))
+head(annual_turnover_min_aridity)
+
+#test for spatial autocorrelation and run spatial model
+
+test.strat_min<-stratified(annual_turnover_min_aridity, c("y"), 0.001)
+annual_transit_aridity_min_lm<-lm(log(layer)~mean_aridity,data=test.strat_min)
+round(coef(summary(annual_transit_aridity_min_lm))[1],2)
+test.strat_min$Yresid <- resid(annual_transit_aridity_min_lm)
+
+#cor(test.strat_min$layer,test.strat_min$mean_aridity)
+
+#variogram
+Vout_min<-variogram(Yresid~1,loc=~x+y, width=.05,data=test.strat_min) ###calculate a variogram using the data. this will take a few minutes if the full dataset
+plot(Vout_min$dist,Vout_min$gamma,xlab='Distance (Deg)', ylab='Semivariance',main='',cex.lab=1.5, cex.main=2, pch=19, cex=.5)
+
+#prep spatial weights
+poly.resids_min<-rasterToPolygons(rasterFromXYZ(test.strat_min[,c(1,2,5)]))
+nb_min <- poly2nb(poly.resids_min, queen=TRUE)
+lw_min <- nb2listw(nb_min, style="W", zero.policy=TRUE)
+lw_min$weights
+
+moran(poly.resids$Yresid, lw, length(nb_min), Szero(lw_min))
+moran.test(poly.resids_min$Yresid, lw_min, alternative="greater",zero.policy=TRUE)
+#suggests no autocorrelation
+moran.mc(poly.resids_min$Yresid, lw_min,nsim=999, alternative="greater",zero.policy=TRUE)
+# suggests autocorrelation
+
+#spatial error model
+spatial_error_min <- errorsarlm(log(layer)~mean_aridity,data=test.strat_min,listw = lw_min,
+                                zero.policy = T)
+summary(spatial_error_min)
+
+#spatial lag model
+spatial_lag_min<-lagsarlm(log(layer)~mean_aridity,data=test.strat_min,lw_min,zero.policy = T)
+summary(spatial_lag_min)
+
+#Similar weak positive effect: As water limitation decreases, turnover time increases
+
+#overall, more arid regions generally have faster transit times, likely due to
+# storage differences as different by biomass stocks.
+
+
+

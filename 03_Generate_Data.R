@@ -509,7 +509,7 @@ rm(december_2015)
 
 
 #-------------------------------------------------------------------------------
-# Import and Re-scale Aboveground Biomass Density for your 2010 --------
+# Import and aggregate Aboveground Biomass Density for your 2010 --------
 
 #file source:
 #https://uwmadison.app.box.com/s/xj3fnde17yazlogbiq740da2mrv2ma61
@@ -525,7 +525,7 @@ aboveground_biomass_density_30x_aggregate <- raster::aggregate(aboveground_bioma
 #save to file
 writeRaster(aboveground_biomass_density_30x_aggregate,'./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
 #-------------------------------------------------------------------------------
-# get leaf water content data for tundra land cover ------
+# Get leaf water content data for tundra land cover ------
 
 tundra_data<-read.csv('./../../../Data/tundra_trait_team/TTT_cleaned_dataset.csv')
 head(tundra_data)
@@ -547,4 +547,37 @@ summary(tundra_ldmc_averaged)
 #1/1.2 = water divided by dry mass = 0.83 (assuming fresh mass=everything)
 #((1.2+1) -1.2)/(1.2+1) = 0.45 (assuming fresh mass = water)
 #((1.2+1) -1)/(1.2+1) = 0.55 (must be this one?)
+#-------------------------------------------------------------------------------
+# Convert land cover rasters into shapefiles (work in progress) -----
+
+forest<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
+forest_ag <- raster::aggregate(forest,fact=30)
+crs(forest) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+grasslands_error <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_grasslands_quadrature_rel.tif')
+#r <- forest> -Inf
+
+#ploygons
+plot(forest_ag)
+forest_shp<-rasterToPolygons(forest_ag, dissolve=F)
+?rasterToPolygons
+plot(forest_shp)
+
+#lines
+forest_shp_lines <- rasterToContour(grasslands_error)
+plot(forest_shp_lines)
+
+crs(forest_shp) <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+
+writeOGR(forest_shp, dsn=getwd(),layer="forest_shp",driver="ESRI Shapefile")
+
+
+#-------------------------------------------------------------------------------
+# Import and re-grid climate data-----
+
+#re-gridded aridity 
+mean_aridity <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
+                                           'aridity20yrs')
+#save
+writeRaster(mean_aridity,'./../../../Data/Derived_data/Climate/mean_aridity.tif',
+             overwrite=TRUE)
 
