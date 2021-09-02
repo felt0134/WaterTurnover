@@ -572,12 +572,67 @@ writeOGR(forest_shp, dsn=getwd(),layer="forest_shp",driver="ESRI Shapefile")
 
 
 #-------------------------------------------------------------------------------
-# Import and re-grid climate data-----
+# Import  climate data-----
+
+#first look at ncdf file to get variable names
+#climate_data <- nc_open('./../../../Data/climate/aridity.nc')
 
 #re-gridded aridity 
 mean_aridity <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
                                            'aridity20yrs')
+#plot(mean_aridity)
+
 #save
-writeRaster(mean_aridity,'./../../../Data/Derived_data/Climate/mean_aridity.tif',
-             overwrite=TRUE)
+# writeRaster(mean_aridity,'./../../../Data/Derived_data/Climate/mean_aridity.tif',
+#              overwrite=TRUE)
+
+#
+#
+
+
+#re-gridded MAP
+
+#look at data
+#map <- raster(ncvar_get(climate_data,'p20yrs'))
+
+mean_precip <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
+                                           'p20yrs')
+
+#this is daily precip, so multipy by 365 (Purdy, A., personal Corr.)
+mean_precip <- mean_precip*365.25
+
+#resample to match aridity
+mean_precip <- resample(mean_precip,mean_aridity)
+mean_precip <- mask(mean_precip,mean_aridity)
+#plot(mean_precip)
+
+#save
+writeRaster(mean_precip,'./../../../Data/Derived_data/Climate/mean_precip.tif',
+            overwrite=TRUE)
+
+
+
+
+#
+#
+
+
+#re-gridded PET
+mean_pet <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
+                                           'pet20yrs')
+#plot(mean_pet)
+
+
+#resample to match aridity
+mean_pet <- resample(mean_pet,mean_aridity)
+mean_pet <- mask(mean_pet,mean_aridity)
+#plot(mean_pet)
+
+#save
+writeRaster(mean_pet,'./../../../Data/Derived_data/Climate/mean_pet.tif',
+            overwrite=TRUE)
+
+#stopped with this because unclear the time units of these data
+
+
 
