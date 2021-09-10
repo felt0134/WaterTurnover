@@ -650,36 +650,36 @@ global_truncated<-
   raster::merge(trun.annual.list[1]$grassland,trun.annual.list[2]$forest,
                 trun.annual.list[3]$tundra,trun.annual.list[4]$croplands,
                 trun.annual.list[5]$shrubland)
-plot(global_truncated)
+#plot(global_truncated)
 
 #bind all rasters #2
 global_truncated_2<-
   raster::merge(trun.annual.list_2[1]$grassland,trun.annual.list_2[2]$forest,
                 trun.annual.list_2[3]$tundra,trun.annual.list_2[4]$croplands,
                 trun.annual.list_2[5]$shrubland)
-plot(global_truncated_2)
+#plot(global_truncated_2)
 
 #resample
 aridity<-resample(aridity,global_truncated)
-plot(aridity)
+#plot(aridity)
 
 #convert to dataframes and and merge
 
 aridity_df <- data.frame(rasterToPoints(aridity))
-head(aridity_df)
+#head(aridity_df)
 
 annual_turnover_df <- data.frame(rasterToPoints(global_truncated))
-head(annual_turnover_df)
+#head(annual_turnover_df)
 
 annual_turnover_df_2 <- data.frame(rasterToPoints(global_truncated_2))
 annual_turnover_df_2$cover <- annual_turnover_df_2$layer
-head(annual_turnover_df_2)
+#head(annual_turnover_df_2)
 
 annual_turnover_aridity <- merge(annual_turnover_df,aridity_df,by=c('x','y'))
 head(annual_turnover_aridity)
 
 annual_turnover_aridity <- merge(annual_turnover_df_2[c(1,2,4)],annual_turnover_aridity,by=c('x','y'))
-head(annual_turnover_aridity)
+#head(annual_turnover_aridity)
 
 #rename veg IDs
 # Renaming factor levels dplyr
@@ -694,7 +694,7 @@ annual_turnover_aridity$cover <- recode_factor(annual_turnover_aridity$cover,
                 '4'='cropland',
                 '5'='shrubland')
 
-head(annual_turnover_aridity)
+#head(annual_turnover_aridity)
 unique(annual_turnover_aridity$cover)
 
 #stratify by latitude 
@@ -829,9 +829,8 @@ summary(spatial_lag)
 #-------------------------------------------------------------------------------
 #MINIMUM TRANSIT TIME------
 
-# now do minimum transit time
-aridity <- raster('./../../../Data/Derived_data/Climate/mean_aridity.tif')
-
+# first loop through land covers to create a global raster
+#start:
 trun.minimum.list<-list()
 trun.minimum.list_2<-list()
 land_covers_2 <- c("grasslands","forests","tundras","croplands","shrublands")
@@ -889,7 +888,23 @@ global_truncated_minimum_2 <-
                 trun.minimum.list_2[5]$shrubland)
 plot(global_truncated_minimum_2)
 
-#resample the minimum transit raster
+#end
+
+#
+#
+
+
+
+#loop through each climate covar to resample to the minimum transit raster...
+#start:
+
+climate_vars <-c('aridity','pet','precip')
+climate_list <- list()
+
+for(i in climate_vars){
+
+aridity <- raster(paste0('./../../../Data/Derived_data/Climate/mean_',i,'.tif'))
+
 aridity_min<-resample(aridity,global_truncated_minimum)
 plot(aridity_min)
 
@@ -920,34 +935,58 @@ annual_turnover_min_aridity$cover <- recode_factor(annual_turnover_min_aridity $
                                                '4'='cropland',
                                                '5'='shrubland')
 
-head(annual_turnover_min_aridity)
+#head(annual_turnover_min_aridity)
 
+climate_list[[i]] <- annual_turnover_min_aridity
+
+}
+
+#end
+
+head(climate_list$aridity)
+
+library(splitstackshape)
+
+#a preliminary look for ecach variable look indicated....
+
+#PET models: more variance explained when sep. by cover type/needs sqrt transformation
+#MAP models: more variance explained when sep. by cover type/needs sqrt transformation
+#aridity models: 
+
+#i<-'precip'
 #stratify by latitude
-test.strat_min<-stratified(annual_turnover_min_aridity, c("y"), 0.001)
+test.strat_min<-stratified(climate_list$aridity, c("y"), 0.001)
 head(test.strat_min)
+colnames(test.strat_min) <- c('x','y','cover','transit','climate')
 
 #check sample sizes for each land cover type
-aggregate(layer~cover,length,data=test.strat_min)
+aggregate(transit~cover,length,data=test.strat_min)
+
+#visualize
+ggplot(test.strat_min,aes(climate,sqrt(transit))) +
+  facet_wrap(~cover,scales = "free") +
+  geom_point() +
+  stat_smooth(method = "lm")
 
 #compare models
 
 #model 1: just aridity
-model_1_min <- lm(layer~mean_aridity,data=test.strat_min)
+model_1_min <- lm(transit~climate,data=test.strat_min)
 plot(model_1_min)
 #transform to better meet assumptions:
 #square root transform better meets assumptions than log transform 
 
-model_1_min_sqrt <- lm(sqrt(layer)~mean_aridity,data=test.strat_min)
+model_1_min_sqrt <- lm(sqrt(transit)~climate,data=test.strat_min)
 plot(model_1_min_sqrt)
 summary(model_1_min_sqrt)
 #low r-squared
 
 #model 2: influence of aridity by land cover type
-model_2_min <- lm(layer~mean_aridity + mean_aridity:cover,data=test.strat_min)
+model_2_min <- lm(transit~climate + cover + climate:cover,data=test.strat_min)
 plot(model_2_min)
 #transform to meet assumptions:
 
-model_2_min_sqrt <- lm(sqrt(layer)~mean_aridity + mean_aridity:cover,data=test.strat_min)
+model_2_min_sqrt <- lm(sqrt(transit)~climate + cover +climate:cover,data=test.strat_min)
 plot(model_2_min_sqrt)
 summary(model_2_min_sqrt)
 
@@ -976,20 +1015,35 @@ moran.mc(poly.resids_min$Yresid, lw_min,nsim=999, alternative="greater",zero.pol
 # suggests some autocorrelation
 
 #spatial error model
-spatial_error_min <- errorsarlm(sqrt(layer)~mean_aridity +mean_aridity:cover,
+spatial_error_min <- errorsarlm(sqrt(transit)~climate + cover + climate:cover,
                                 data=test.strat_min,listw = lw_min,
                                 zero.policy = T)
 summary(spatial_error_min)
 
 #spatial lag model
-spatial_lag_min<-lagsarlm(sqrt(layer)~mean_aridity +mean_aridity:cover,
-                          data=test.strat_min,lw_min,zero.policy = T)
-summary(spatial_lag_min)
+# spatial_lag_min<-lagsarlm(sqrt(transit)~climate + cover + climate:cover,
+#                           data=test.strat_min,lw_min,zero.policy = T)
+# summary(spatial_lag_min)
 
 #in forests and tundra, drier locations have faster transit times
 #in croplands and shrublands, drier locations have slower transit times
 
+coef.df<-data.frame(coef(spatial_error_min))
+head(coef.df)
 
+#transpose to from long to wide dataframe
+test.wide<-data.frame(t(coef.df))
+
+#fix columns values, need to add/subtract from grassland
+test.wide$grassland.climate.int <- test.wide$climate
+test.wide$forest.climate.int <- test.wide$climate + test.wide$climate.coverforest
+test.wide$shrubland.climate.int <- test.wide$climate + test.wide$climate.covershrubland
+test.wide$tundra.climate.int <- test.wide$climate + test.wide$climate.covertundra
+test.wide$cropland.climate.int <- test.wide$climate + test.wide$climate.covercropland
+
+test.wide <- test.wide[c('lambda','grassland.climate.int','forest.climate.int',
+                         'shrubland.climate.int',
+                         'tundra.climate.int','cropland.climate.int')]
 
 
 #-------------------------------------------------------------------------------
