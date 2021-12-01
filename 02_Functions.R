@@ -1063,7 +1063,7 @@ get_pdf_df <- function(df){
 }
 
 #------------------------------------------------
-# Filter out extreme values for turnover for script (08) based on tails-----
+# Filter out extreme values for turnover for script (08) based on tails (CHECK) -----
 
 
 filter_extremes_turnover<-function(df){
@@ -1250,7 +1250,8 @@ get_seasonal_turnover_VWC <- function(season,land_cover){
   test.vwc$turnover <- 
     test.vwc$layer/test.vwc$canopy_transpiration_mm_m2
   
-  
+  colnames(test.vwc) <- c('x','y','canopy_transpiration_mm_m2','storage_mm',
+                          'turnover_days','season')
   # bound the data by the 1st and 99th percentiles
   #test.vwc <- filter_extremes_turnover(test.vwc)
   
@@ -1260,7 +1261,7 @@ get_seasonal_turnover_VWC <- function(season,land_cover){
   
 }
 #------------------------------------------------
-# Filter out extreme values for turnover for script (08) based on IQR outliers-----
+# Filter out extreme values for turnover for script (08) based on IQR outliers (CHECK) -----
 
 
 filter_extremes_turnover_IQR<-function(df){
@@ -1431,7 +1432,8 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     test.grassland.cumulative.transp <- test.grassland.cumulative.transp %>%
       dplyr::filter(canopy_transpiration_mm_m2 > .01)
     
-    test.grassland.cumulative.transp$canopy_transpiration_mm_m2 <- test.grassland.cumulative.transp$canopy_transpiration_mm_m2/365
+    test.grassland.cumulative.transp$canopy_transpiration_mm_m2 <- 
+      test.grassland.cumulative.transp$canopy_transpiration_mm_m2/365
     
     land_cover_raster<-rasterFromXYZ(test.grassland.cumulative.transp)
     rm(test.grassland.cumulative.transp)
@@ -1446,7 +1448,8 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     test.forest.cumulative.transp <- test.forest.cumulative.transp %>%
       dplyr::filter(canopy_transpiration_mm_m2 > .01)
     
-    test.forest.cumulative.transp$canopy_transpiration_mm_m2 <- test.forest.cumulative.transp$canopy_transpiration_mm_m2/365
+    test.forest.cumulative.transp$canopy_transpiration_mm_m2 <- 
+      test.forest.cumulative.transp$canopy_transpiration_mm_m2/365
     
     land_cover_raster<-rasterFromXYZ(test.forest.cumulative.transp)
     rm(test.forest.cumulative.transp)
@@ -1461,7 +1464,8 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     test.shrubland.cumulative.transp <- test.shrubland.cumulative.transp %>%
       dplyr::filter(canopy_transpiration_mm_m2 > .01)
     
-    test.shrubland.cumulative.transp$canopy_transpiration_mm_m2 <- test.shrubland.cumulative.transp$canopy_transpiration_mm_m2/365
+    test.shrubland.cumulative.transp$canopy_transpiration_mm_m2 <- 
+      test.shrubland.cumulative.transp$canopy_transpiration_mm_m2/365
     
     land_cover_raster<-rasterFromXYZ(test.shrubland.cumulative.transp)
     rm(test.shrubland.cumulative.transp)
@@ -1476,7 +1480,8 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     test.cropland.cumulative.transp <- test.cropland.cumulative.transp %>%
       dplyr::filter(canopy_transpiration_mm_m2 > .01)
     
-    test.cropland.cumulative.transp$canopy_transpiration_mm_m2 <- test.cropland.cumulative.transp$canopy_transpiration_mm_m2/365
+    test.cropland.cumulative.transp$canopy_transpiration_mm_m2 <- 
+      test.cropland.cumulative.transp$canopy_transpiration_mm_m2/365
     
     #summary(test.cropland.cumulative.transp)
     
@@ -1493,7 +1498,8 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     test.tundra.cumulative.transp <- test.tundra.cumulative.transp %>%
       dplyr::filter(canopy_transpiration_mm_m2 > .01)
     
-    test.tundra.cumulative.transp$canopy_transpiration_mm_m2 <- test.tundra.cumulative.transp$canopy_transpiration_mm_m2/365
+    test.tundra.cumulative.transp$canopy_transpiration_mm_m2 <- 
+      test.tundra.cumulative.transp$canopy_transpiration_mm_m2/365
     
     #summary(test.tundra.cumulative.transp)
     
@@ -1503,7 +1509,7 @@ get_monthly_turnover_VWC <- function(month,land_cover){
     
   }else if(land_cover=='xxx'){}
   
-  
+  #resample storage and transp, and mask to the specific land cover type
   test.transp <- rasterFromXYZ(test.transp)
   test.transp<- resample(test.transp,transit.all.raster)
   
@@ -1677,6 +1683,9 @@ get_monthly_storage_VWC <- function(month,land_cover){
   
   #convert to data frame
   test.vwc <- data.frame(rasterToPoints(test.vwc))
+  
+  colnames(test.vwc) <- c('x','y','canopy_transpiration_mm_m2','storage_mm',
+                          'turnover_days','season')
 
   # bound the data by the 1st and 99th percentiles
   #test.vwc <- filter_extremes_turnover(test.vwc)
@@ -1755,12 +1764,15 @@ error_prop_division <- function(dataset){
   # se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,stderr_relative,data=dataset)
   
   #get standard deviation and divide by the mean
-  se.storage.ag <- aggregate(layer~x+y,sd_relative,data=dataset)
+  se.storage.ag <- aggregate(storage_mm~x+y,sd_relative,data=dataset)
+  
   se.transp <- aggregate(canopy_transpiration_mm_m2~x+y,sd_relative,data=dataset)
   
   merge.num.den <- merge(se.storage.ag,se.transp,by=c('x','y'))
   
-  merge.num.den$uncertainty <- sqrt(((merge.num.den$layer)^2)) + 
+  merge.num.den <- merge.num.den[!is.na(merge.num.den$canopy_transpiration_mm_m2), ]
+  
+  merge.num.den$uncertainty <- sqrt(((merge.num.den$storage_mm)^2)) + 
     (((merge.num.den$canopy_transpiration_mm_m2)^2))
   
   merge.num.den<-rasterFromXYZ(merge.num.den[c(1,2,5)])
@@ -1796,9 +1808,9 @@ get_turncated_dist <- function(land_cover,annual=T){
   colnames(grasslands_turnover_df) <- c('x','y','turnover')
   #head(grasslands_turnover_df)
   
-  #turncate right (top 5%)
+  #turncate right (top 1%)
   high<-round(quantile(grasslands_turnover_df$turnover,
-                       probs=0.95),2)
+                       probs=0.99),2)
   
   grasslands_turnover_df_truncate <- grasslands_turnover_df %>%
     dplyr::filter(turnover < high)
@@ -1809,7 +1821,7 @@ get_turncated_dist <- function(land_cover,annual=T){
 }
 
 #------------------------------------------------
-# Transit uncertainty by comparing minimum nd maximum bounds for each pixel-----
+# Transit uncertainty by comparing minimum And maximum bounds for each pixel-----
 
 #uncertainty max numerator min denominator:
 transit_uncert_max <- function(x){
@@ -1857,7 +1869,7 @@ transit_uncert_min <- function(x){
 }
 
 #------------------------------------------------
-# Turn nc irregular grid into a regular grid usuing expand grid approach -----
+# Turn an irregular grid into a regular grid using expand grid approach -----
 
 
 raster_from_nc_expand_grid <- function(file,variable){
@@ -1883,5 +1895,591 @@ raster_from_nc_expand_grid <- function(file,variable){
   latlong <- fix_grid(latlong)
   
   return(latlong)
+  
+}
+
+#------------------------------------------------
+#get slopes of climate effects on transit time for different land cover types----
+get_climate_model_coefs <- function(list,x,veg){
+  
+  list_coef <- list()
+  list_r_squared <- list()
+  
+  test <- data.frame(list[x])
+  colnames(test) <- c('x', 'y', 'cover', 'transit', 'climate_mean')
+  test<- test %>%
+    dplyr::filter(transit > 0)  
+  
+  #subset to veg
+  test <- subset(test,cover==veg)
+  
+  #turn to spatial points df
+  coordinates(test) <- ~x+y
+  
+  #run loop to get resampled coefs
+  for( i in 1:1000){
+    
+    #distance constrained subsampling
+    test_subsampled <- subsample.distance(test,size=100,d=50,replacement = T,
+                                          latlong = T,echo = F)
+    
+    #turn back into df and run model
+    test.df <- as.data.frame(test_subsampled)
+    transit_lm<-lm(log(transit)~climate_mean,data=test.df)
+    summary(transit_lm)
+    
+    #make into df so easier to ID
+    slope_df <- coef(transit_lm)[2]
+    slope_df$coef <- 'slope'
+    slope_df$id <- i
+    slope_df$veg <- veg
+    
+    r.squared_df <- data.frame(summary(transit_lm)$r.squared)
+    r.squared_df$coef <- 'r.squared'
+    r.squared_df$id <- i
+    r.squared_df$veg <- veg
+    
+    #store key output in lists
+    list_coef[[i]] <- slope_df
+    list_r_squared[[i]] <- r.squared_df
+    
+    
+  }
+  
+  #output lists
+  return(list(list_coef,list_r_squared))
+  
+}
+
+#------------------------------------------------
+#function to generate monthly transp data by land cover type (maybe DELETE) -----
+
+
+get_land_cover_transp<-function(region,x){
+  
+  turnover.list<-list() 
+  ncpath_9_km_2015_2017_smap_enhanced <- "./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
+  et_9km_monthly_2002_2017_length <- dir(ncpath_9_km_2015_2017_smap_enhanced, full.names = T)
+  
+  for(i in et_9km_monthly_2002_2017_length[x]){
+    
+    i = et_9km_monthly_2002_2017_length[1]
+    
+    # Get ET data
+    et.data.9km<-load_et_by_filepath(x= i,process = "SMAPcanopy_transpiration")
+    
+    # Try to normalize the EASE grid
+    et.data.9km<-fix_grid(et.data.9km)
+    #plot(et.data.9km)
+    
+    if(region =='Grassland'){
+      
+      #upload region shapefile and raster
+      shapefile<-readOGR('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/grassland',
+                         layer='grassland')
+      
+      #biomass raster
+      region.raster<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
+      
+      
+    }else if(region=='Forest'){
+      
+      
+      #upload region shapefile and raster
+      shapefile<-readOGR('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/forest',
+                         layer='forest')
+      
+      #biomass raster
+      region.raster<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
+      
+      
+    }else if(region=='Tundra'){
+      
+      
+      #upload region shapefile and raster
+      shapefile<-readOGR('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/tundra',
+                         layer='tundra')
+      
+      #biomass raster
+      region.raster<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
+      
+      
+    }else if(region=='Shrubland'){
+      
+      #upload region shapefile and raster
+      shapefile<-readOGR('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/shrubland',
+                         layer='shrubland')
+      
+      #biomass raster
+      region.raster<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
+      
+      
+    }else if(region=='Cropland'){
+      
+      #upload region shapefile and raster
+      shapefile<-readOGR('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/cropland',
+                         layer='cropland')
+      
+      #biomass raster
+      region.raster<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Cropland.tif')
+      
+    }else if(region=='xxx'){}
+    
+    
+    #Canopy Transpiration
+    ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
+    colnames(ET) <- c('x','y','canopy_transpiration_mm_m2')
+    
+    #convert latent energy to mm to provide CUMULATIVE monthly T
+    region_biomass_water_transpiration<-aggregate(canopy_transpiration_mm_m2~x+y,
+                                                  le_to_cumulative_monthly_mm,data=ET)
+    rm(ET)
+    
+    region_biomass_water_transpiration <- rasterFromXYZ(region_biomass_water_transpiration)
+    crs(region_biomass_water_transpiration) <- '+proj=longlat +datum=WGS84 +no_defs'
+    region_biomass_water_transpiration <- crop(region_biomass_water_transpiration,extent(region.raster))
+    
+    #store in list
+    #turnover.list[[i]] <- region_biomass_water_transpiration
+    
+  }
+  
+  #return(turnover.list)
+  
+  return(region_biomass_water_transpiration)
+  
+}
+
+
+# import and produce cumulative transpiration raster ------
+
+
+import_cumulative_transp = function(x){
+  
+  regions <- x
+  
+  for(i in 1:length(regions)){
+    
+    ecoregion <- regions[i]
+    outfile <- paste0('./../../../Data/Derived_Data/Land_Cover_Transp/',ecoregion,"/raster/")
+    ecoregion_dir <- dir(outfile, full.names = T)
+    ecoregion_dir <- ecoregion_dir[-13] #remove December 2016 (X2 check before you run this)
+    region.list <- list()
+    ecoregion_raster <- raster(paste0('./../../../Data/Derived_data/Land_Cover_Distributions/',ecoregion,'.tif'))
+    
+    
+    for(j in ecoregion_dir[1:12]){
+      
+      test = raster(j)
+      test = extend(test,extent(ecoregion_raster))
+      
+      region.list[[j]] <- test
+      
+    }
+    
+    
+  }
+  
+  stack <- stack(region.list)
+  summed_stack <- calc(stack,sum,na.rm = TRUE)
+  
+  return(summed_stack)
+  
+}
+
+
+#------------------------------------------------
+#Import and produce seasonal estimates of storage and turnover -----
+
+
+import_monthly_transp <- function(x){
+  
+  regions <- x
+  
+  for(i in 1:length(regions)){
+    
+    #load in data
+    ecoregion <- regions[i]
+    outfile <- paste0('./../../../Data/Derived_Data/Land_Cover_Transp/',ecoregion,"/raster/")
+    ecoregion_dir <- dir(outfile, full.names = T)
+    ecoregion_dir <- ecoregion_dir[-13] #remove December 2016 (X2 check before you run this)
+    region.list <- list()
+    ecoregion_raster <- raster(paste0('./../../../Data/Derived_data/Land_Cover_Distributions/',ecoregion,'.tif'))
+    
+    for(j in ecoregion_dir[1:12]){
+      
+      test = raster(j)
+      test = extend(test,extent(ecoregion_raster))
+      test = data.frame(rasterToPoints(test))
+      
+      #add year and month columns
+      df <-data.frame(colnames(test)[3])
+      colnames(df) <- 'val'
+      df$val <- gsub(paste0(ecoregion,'_'),'',df$val)
+      # get year
+      year_val <- substr(df$val, 1, 4)
+      # get month
+      month_val <- substr(df$val, 6, 7)
+      test$year <- year_val
+      test$month <- month_val
+      
+      #rename columns and store in list
+      colnames(test) <- c('x','y','canopy_transpiration_mm_m2','year','month')
+      region.list[[j]] <- test
+      
+      
+      
+    }}
+  
+  
+  #collapse list to a dataframe
+  test.monthly.transp<- do.call("rbind", region.list)
+  rm(region.list,test)
+  rownames(test.monthly.transp)<-NULL
+  
+  #fix so they are numeric
+  test.monthly.transp$year =  as.numeric(as.character(test.monthly.transp$year)) 
+  test.monthly.transp$month =  as.numeric(as.character(test.monthly.transp$month)) 
+  
+  return(test.monthly.transp)
+  
+  
+  
+}
+
+#------------------------------------------------
+#-------- version 2 of getting seasonal storage and turnover -----
+
+get_seasonal_turnover_2 <- function(season){
+  
+  
+  if(season=='december_february'){
+    
+    
+    transp <- transp.stack[[1:3]]
+    
+    vwc = vwc.list[c(1:3)]
+    
+    
+  }else if(season=='march_may'){
+    
+    transp <- transp.stack[[4:6]]
+    
+    vwc = vwc.list[c(4:6)]
+    
+  }else if(season=='june_august'){
+    
+    
+    transp <- transp.stack[[7:9]]
+    
+    vwc = vwc.list[c(7:9)]
+    
+    
+  }else if(season=='september_november'){
+    
+    
+    transp <- transp.stack[[10:12]]
+    
+    vwc = vwc.list[c(10:12)]}
+  
+  
+  #daily T for three month period
+  transp = calc(transp,sum,na.rm=TRUE)
+  transp = transp$layer/90
+  
+  #get average storage
+  vwc = do.call('rbind',vwc)
+  vwc <-aggregate(vwc~x+y,mean,data=vwc)
+  
+  #load reference raster
+  transit.all.raster <- raster(paste0('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_',ecoregion,'_unfiltered.tif'))
+  #fix grid and resample to reference raster to its consistent
+  vwc <- fix_grid(vwc)
+  vwc <- resample(vwc,transit.all.raster)
+  vwc <- mask(vwc,transit.all.raster)
+  plot(vwc,main='vwc')
+  transp <- resample(transp,transit.all.raster)
+  transp <- mask(transp,transit.all.raster)
+  plot(transp,main='transp')
+  
+  # stack.test <- stack(transp,vwc)
+  # stack.test$turnover <- stack.test$layer.2/stack.test$layer.1
+  # turnover <- stack.test$turnover
+  
+  #merge and turn to dataframe so can more easily to summary stats
+  test<-
+    merge(data.frame(rasterToPoints(transp)),data.frame(rasterToPoints(vwc)),
+          by=c('x','y'))
+  
+  test$turnover <- 
+    test$layer.y/test$layer.x
+  
+  colnames(test) <- c('x','y','canopy_transpiration_mm_m2','storage_mm',
+                      'turnover_days')
+  
+  return(test)
+  
+}
+
+#------------------------------------------------
+# version 2 of importing monthly transpiration data -----
+
+import_monthly_transp_2 = function(x){
+  
+  regions <- x
+  
+  for(i in 1:length(regions)){
+    
+    ecoregion <- regions[i]
+    outfile <- paste0('./../../../Data/Derived_Data/Land_Cover_Transp/',ecoregion,"/raster/")
+    ecoregion_dir <- dir(outfile, full.names = T)
+    ecoregion_dir <- ecoregion_dir[-13] #remove December 2016 (X2 check before you run this)
+    region.list <- list()
+    ecoregion_raster <- raster(paste0('./../../../Data/Derived_data/Land_Cover_Distributions/',ecoregion,'.tif'))
+    
+    
+    for(j in ecoregion_dir[1:12]){
+      
+      test = raster(j)
+      test = extend(test,extent(ecoregion_raster))
+      
+      region.list[[j]] <- test
+      
+    }
+    
+    
+  }
+  
+  stack_list = stack(region.list)
+  
+}
+
+
+#------------------------------------------------
+# Get monthly turnover version 2------
+
+
+
+get_monthly_turnover_2 <- function(month){
+  
+  #remember the months are offset by 1
+  
+  if(month=='december'){
+    
+    
+    transp <- transp.stack[[1]]
+    
+    vwc = vwc.list[c(1)]
+    
+    
+  }else if(month=='january'){
+    
+    transp <- transp.stack[[2]]
+    
+    vwc = vwc.list[c(2)]
+    
+  }else if(month=='february'){
+    
+    
+    transp <- transp.stack[[3]]
+    
+    vwc = vwc.list[c(3)]
+    
+    
+  }else if(month=='march'){
+    
+    
+    transp <- transp.stack[[4]]
+    
+    vwc = vwc.list[c(4)]
+    
+    
+  }else if(month=='april'){
+    
+    
+    transp <- transp.stack[[5]]
+    
+    vwc = vwc.list[c(5)]
+    
+  }else if(month=='may'){
+    
+    
+    transp <- transp.stack[[6]]
+    
+    vwc = vwc.list[c(6)]
+    
+  }else if(month=='june'){
+    
+    
+    transp <- transp.stack[[7]]
+    
+    vwc = vwc.list[c(7)]
+    
+  }else if(month=='july'){
+    
+    
+    transp <- transp.stack[[8]]
+    plot(transp)
+    vwc = vwc.list[c(8)]
+    
+  }else if(month=='august'){
+    
+    
+    transp <- transp.stack[[9]]
+    
+    vwc = vwc.list[c(9)]
+    
+  }else if(month=='september'){
+    
+    
+    transp <- transp.stack[[10]]
+    
+    vwc = vwc.list[c(10)]
+    
+  }else if(month=='october'){
+    
+    
+    transp <- transp.stack[[11]]
+    
+    vwc = vwc.list[c(11)]
+    
+  }else if(month=='november'){
+    
+    
+    transp <- transp.stack[[12]]
+    
+    vwc = vwc.list[c(12)]
+    
+  }
+  
+  
+  #daily T for given month 
+  transp <- calc(transp,sum)
+  transp = transp$layer/30
+  
+  #get average storage
+  vwc = do.call('rbind',vwc)
+  vwc <-aggregate(vwc~x+y,mean,data=vwc)
+  
+  #load reference raster
+  # transit.all.raster<-
+  #   raster(paste0('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_',ecoregion,'_unfiltered.tif'))
+  # 
+  
+  transit.all.raster <- raster(paste0('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_',ecoregion,'_unfiltered.tif'))
+  #fix grid and resample to reference raster to its consistent
+  vwc <- fix_grid(vwc)
+  vwc <- resample(vwc,transit.all.raster)
+  vwc <- mask(vwc,transit.all.raster)
+  plot(vwc,main='vwc')
+  transp <- resample(transp,transit.all.raster)
+  transp <- mask(transp,transit.all.raster)
+  plot(transp,main='transp')
+  
+  # stack.test <- stack(transp,vwc)
+  # stack.test$turnover <- stack.test$layer.2/stack.test$layer.1
+  # turnover <- stack.test$turnover
+  
+  #merge and turn to dataframe so can more easily to summary stats
+  test<-
+    merge(data.frame(rasterToPoints(transp)),data.frame(rasterToPoints(vwc)),
+          by=c('x','y'))
+  
+  test$turnover <- 
+    test$layer.y/test$layer.x
+  
+  test$month <- month
+  
+  colnames(test) <- c('x','y','canopy_transpiration_mm_m2','storage_mm',
+                      'turnover_days','month')
+  
+  return(test)
+  
+}
+
+#------------------------------------------------
+#revamped script to generate monthly transp rasters for each land cover -----
+ecoregion='tundra'
+
+get_land_cover_transp_2<-function(ecoregion,x){
+  
+  ncpath_9_km_2015_2017_smap_enhanced <- "./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/"
+  et_9km_monthly_2002_2017_length <- dir(ncpath_9_km_2015_2017_smap_enhanced, full.names = T)
+  
+  
+  # Get ET data (works)
+  et.data.9km<-load_et_by_filepath(x= et_9km_monthly_2002_2017_length[x],process = "SMAPcanopy_transpiration")
+  summary(et.data.9km)
+  
+  # Try to normalize the EASE grid
+  et.data.9km<-fix_grid(et.data.9km)
+  #plot(et.data.9km)
+  
+  
+  # #upload region shapefile and raster
+  # shapefile<-readOGR(paste0('./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/',ecoregion),
+  #                    layer=ecoregion)
+  
+  #biomass raster
+  region.raster<-raster(paste0('./../../../Data/Derived_data/Land_Cover_Distributions/',ecoregion,'.tif'))
+  #plot(region.raster)
+  
+  # #Canopy Transpiration
+  # ET<-biome_resample(shapefile,region.raster,et.data.9km) #bottleneck
+  # colnames(ET) <- c('x','y','canopy_transpiration_mm_m2')
+  
+  resample_test<-resample(et.data.9km,region.raster)
+  resample_test<-mask(resample_test,region.raster)
+  #plot(resample_test)
+  
+  #Canopy Transpiration
+  ET<-data.frame(rasterToPoints(resample_test))
+  colnames(ET) <- c('x','y','canopy_transpiration_mm_m2')
+  
+  #convert latent energy to mm to provide CUMULATIVE monthly T
+  region_biomass_water_transpiration<-aggregate(canopy_transpiration_mm_m2~x+y,
+                                                le_to_cumulative_monthly_mm,data=ET)
+  rm(ET)
+  
+  region_biomass_water_transpiration <- rasterFromXYZ(region_biomass_water_transpiration)
+  crs(region_biomass_water_transpiration) <- '+proj=longlat +datum=WGS84 +no_defs'
+  #region_biomass_water_transpiration <- crop(region_biomass_water_transpiration,extent(region.raster))
+  
+  
+  
+  return(region_biomass_water_transpiration)
+  
+}
+
+#------------------------------------------------
+# truncate to help with mapping with long tails ------
+truncate_for_mapping <- function(df,col_number){
+  
+  # df <- var_df
+  # col_number = 3
+  # 
+  #roundabout way of getting the 95th quantile
+  test_vec <- df[col_number]
+  colnames(test_vec) <- 'vec'
+  quantile_95 = quantile(test_vec$vec,prob=0.95)
+  
+  #directly change column name
+  colnames(df) <- c('x','y','value')
+  
+  #subset to pixels above 95th quantile and then make them all that value
+  var_df_above_95 <- df %>%
+    dplyr::filter( value > quantile_95) %>%
+    dplyr::mutate(value = quantile_95)
+  summary(var_df_above_95)
+  
+  #subset to value below 95th quantile
+  var_df_below_95 <- df %>%
+    dplyr::filter(value < quantile_95)
+  
+  #bind the two together into one dataframe
+  var_df_2 <- rbind(var_df_below_95,var_df_above_95)
+  #head(var_df_2)
+  
+  return(var_df_2)
   
 }

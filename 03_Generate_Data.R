@@ -1,18 +1,6 @@
 
 # generate key derived datasets needed to estimate turnover
 
-# Aggregate Global carbon density for year 2010 ----------------------------------------
-
-#upload original
-aboveground_biomass <- raster('./../../Data/Biomass/Global_Maps_C_Density_2010_1763/data/aboveground_biomass_carbon_2010.tif')
-#plot(aboveground_biomass)
-
-#aggregate 30X to match resolution of canopy trasnpiration data
-aboveground_biomass_30x_aggregate <- raster::aggregate(aboveground_biomass,fact=30)
-#plot(aboveground_biomass_30x_aggregate)
-
-#save to file
-writeRaster(aboveground_biomass_30x_aggregate,'./../../Data/Derived_Data/Biomass/aboveground_biomass_aggregate_30X.tif')
 #-------------------------------------------------------------------------------
 # Create land cover rasters and save them to the derived data folder------
 
@@ -23,8 +11,9 @@ writeRaster(aboveground_biomass_30x_aggregate,'./../../Data/Derived_Data/Biomass
 
 # use most recent year (2015) in the multi-year dataset of landcover
 land_cover <- raster('./../../../Data/Land_cover/GLASS-GLC/GLASS-GLC_7classes_2015.tif')
-plot(land_cover)
-unique(land_cover$GLASS.GLC_7classes_2015)
+# plot(land_cover)
+# unique(land_cover$GLASS.GLC_7classes_2015)
+#0  10  20  30  40  70  90 100
 
 #just do each manually, not that many land cover types
 
@@ -32,100 +21,186 @@ land_cover_df<-rasterToPoints(land_cover)
 land_cover_df <- data.frame(land_cover_df)
 #head(land_cover_df)
 
+
+
+
 #subset # 10 which is number for Cropland
+cropland_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Cropland.tif')
 ten<-subset(land_cover_df,GLASS.GLC_7classes_2015=='10')
 ten.raster<-rasterFromXYZ(ten)
+proj4string(ten.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+ten.raster <- resample(ten.raster,cropland_biomass)
 plot(ten.raster)
-writeRaster(ten.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Cropland.tif')
+writeRaster(ten.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Cropland.tif',overwrite=TRUE)
+rm(ten,ten.raster,cropland_biomass)
 
 #subset # 20 which is number for forest
+forest_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Forest.tif')
 twenty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='20')
 twenty.raster<-rasterFromXYZ(twenty)
+proj4string(twenty.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+twenty.raster <- resample(twenty.raster,forest_biomass) #resample to biomass extent and resolution
 plot(twenty.raster)
-writeRaster(twenty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Forest.tif')
+writeRaster(twenty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Forest.tif',overwrite=TRUE)
+rm(twenty,twenty.raster,forest_biomass)
 
 #subset # 30 which is number for grassland
+grassland_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Grassland.tif')
 thirty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='30')
 thirty.raster<-rasterFromXYZ(thirty)
+proj4string(thirty.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+thirty.raster <- resample(thirty.raster,grassland_biomass) #resample to biomass extent and resolution
 plot(thirty.raster)
-writeRaster(thirty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Grassland.tif')
+writeRaster(thirty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Grassland.tif',overwrite=TRUE)
+rm(thirty,thirty.raster,grassland_biomass)
 
 #subset # 40 which is number for shrubland
+shrubland_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
 forty<-subset(land_cover_df,GLASS.GLC_7classes_2015=='40')
 forty.raster<-rasterFromXYZ(forty)
+proj4string(forty.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+forty.raster <- resample(forty.raster,shrubland_biomass) #resample to biomass extent and resolution
 plot(forty.raster)
-writeRaster(forty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Shrubland.tif')
+writeRaster(forty.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Shrubland.tif',overwrite=TRUE)
+rm(forty,forty.raster,shrubland_biomass)
 
 #subset # 70 which is number for Tundra
+tundra_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif')
 seventy<-subset(land_cover_df,GLASS.GLC_7classes_2015=='70')
 seventy.raster<-rasterFromXYZ(seventy)
+proj4string(seventy.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+seventy.raster <- resample(seventy.raster,tundra_biomass) #resample to biomass extent and resolution
 plot(seventy.raster)
-writeRaster(seventy.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Tundra.tif')
+writeRaster(seventy.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Tundra.tif',overwrite=TRUE)
+rm(seventy,seventy.raster,tundra_biomass)
 
 #subset # 90 which is number for barren land
+barren_biomass<-raster('./../../../Data/Derived_data/Biomass/Land_Cover/Barren.tif')
 ninety<-subset(land_cover_df,GLASS.GLC_7classes_2015=='90')
 ninety.raster<-rasterFromXYZ(ninety)
+proj4string(ninety.raster) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+ninety.raster <- resample(ninety.raster,barren_biomass) #resample to biomass extent and resolution
 plot(ninety.raster)
-writeRaster(ninety.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Barren.tif')
+writeRaster(ninety.raster,'./../../../Data/Derived_Data/Land_Cover_Distributions/Barren.tif',overwrite=TRUE)
+rm(ninety,ninety.raster)
+
+#-------------------------------------------------------------------------------
+# Create land cover spatial polygons -----
+
+#grassland
+shapefile.grassland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
+shapefile.grassland <- aggregate(shapefile.grassland,fact=10)
+plot(shapefile.grassland,col='blue')
+shapefile.grassland<-rasterToPolygons(shapefile.grassland)
+writeOGR(shapefile.grassland,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/grassland',
+         driver="ESRI Shapefile", layer='grassland',overwrite_layer = T)
+rm(shapefile.grassland)
+
+#forest
+shapefile.forest<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
+shapefile.forest<-rasterToPolygons(shapefile.forest)
+writeOGR(shapefile.forest,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/forest',
+         driver="ESRI Shapefile", layer='forest')
+rm(shapefile.forest)
+
+#shrubland
+shapefile.shrubland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
+shapefile.shrubland<-rasterToPolygons(shapefile.shrubland)
+writeOGR(shapefile.shrubland,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/shrubland',
+         driver="ESRI Shapefile", layer='shrubland')
+rm(shapefile.shrubland)
+
+#cropland
+shapefile.shrubland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
+shapefile.shrubland<-rasterToPolygons(shapefile.shrubland)
+writeOGR(shapefile.shrubland,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/shrubland',
+         driver="ESRI Shapefile", layer='shrubland')
+rm(shapefile.shrubland)
+
+#cropland
+shapefile.cropland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Cropland.tif')
+shapefile.cropland<-rasterToPolygons(shapefile.cropland)
+writeOGR(shapefile.cropland,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/cropland',
+         driver="ESRI Shapefile", layer='cropland')
+rm(shapefile.cropland)
+
+#tundra
+shapefile.tundra<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
+shapefile.tundra<-rasterToPolygons(shapefile.tundra)
+writeOGR(shapefile.tundra,'./../../../Data/Derived_data/Land_Cover_Distributions/shapefiles/tundra',
+         driver="ESRI Shapefile", layer='tundra')
+rm(shapefile.tundra)
 
 #-------------------------------------------------------------------------------
 # Create land cover aboveground biomass rasters --------
 
 #import the aggregated aboveground biomass data set
-aboveground_biomass <- raster('./../../../Data/Derived_data/Biomass/aboveground_biomass_aggregate_30X.tif')
+aboveground_biomass <- raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
 #plot(aboveground_biomass)
 
 # since not many land cover types, do this manually for each:
 
 # land cover for grasslands
-
 grasslands<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Grassland.tif')
 #plot(grasslands)
 proj4string(grasslands) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 grasslands_2<-resample(grasslands,aboveground_biomass)
 grasslands.2_abg<-mask(aboveground_biomass,grasslands_2)
 #plot(grasslands.2_abg)
-writeRaster(grasslands.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Grasslands.tif')
+writeRaster(grasslands.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Grassland.tif',overwrite=TRUE)
+rm(grasslands,grasslands_2,grasslands.2_abg)
 
 # land cover for Forests
-
 forest<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Forest.tif')
 #plot(forest)
 proj4string(forest) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 forest_2<-resample(forest,aboveground_biomass)
 forest.2_abg<-mask(aboveground_biomass,forest_2)
 #plot(forest.2_abg)
-writeRaster(forest.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Forest.tif')
+writeRaster(forest.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Forest.tif',overwrite=TRUE)
+rm(forest.2_abg,forest_2,forest)
 
 # land cover for Tundra
-
 tundra<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Tundra.tif')
 #plot(tundra)
 proj4string(tundra) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 tundra_2<-resample(tundra,aboveground_biomass)
 tundra.2_abg<-mask(aboveground_biomass,tundra_2)
 #plot(tundra.2_abg)
-writeRaster(tundra.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif')
+writeRaster(tundra.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Tundra.tif',overwrite=TRUE)
+rm(tundra,tundra.2_abg,tundra_2)
 
 # land cover for Shrubland
-
 Shrubland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Shrubland.tif')
 #plot(Shrubland)
 proj4string(Shrubland) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 Shrubland_2<-resample(Shrubland,aboveground_biomass)
 Shrubland.2_abg<-mask(aboveground_biomass,Shrubland_2)
 #plot(Shrubland.2_abg)
-writeRaster(Shrubland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif')
+writeRaster(Shrubland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Shrubland.tif',overwrite=TRUE)
+rm(Shrubland,Shrubland.2_abg,Shrubland_2)
 
 # land cover for Cropland
-
 Cropland<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/Cropland.tif')
 #plot(Cropland)
 proj4string(Cropland) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
 Cropland_2<-resample(Cropland,aboveground_biomass)
 Cropland.2_abg<-mask(aboveground_biomass,Cropland_2)
 #plot(Cropland.2_abg)
-writeRaster(Cropland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Cropland.tif')
+writeRaster(Cropland.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Cropland.tif',overwrite=TRUE)
+rm(Cropland,Cropland.2_abg,Cropland_2)
+
+# land cover for barren
+barren<-raster('./../../../Data/Derived_data/Land_Cover_Distributions/barren.tif')
+#plot(barren)
+proj4string(barren) <- CRS('+proj=longlat +datum=WGS84 +no_defs')
+barren_2<-resample(barren,aboveground_biomass)
+barren.2_abg<-mask(aboveground_biomass,barren_2)
+#plot(barren.2_abg)
+writeRaster(barren.2_abg,'./../../../Data/Derived_data/Biomass/Land_Cover/Barren.tif',overwrite=TRUE)
+rm(barren,barren.2_abg,barren_2)
+
+rm(aboveground_biomass)
 
 
 #-------------------------------------------------------------------------------

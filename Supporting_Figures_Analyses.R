@@ -6,6 +6,8 @@
 #global map of sample size
 
 transit_sample_size <- raster('./../../../Data/Derived_Data/Sample_Sizes/VWC_global_transit_sample_size.tif')
+hist(transit_sample_size)
+summary(transit_sample_size)
 
 png('Figures/Supporting/transit_time_sample_size.png',
     width=8,height=6,units="in",res=400)
@@ -53,10 +55,14 @@ mtext("B", side=side, line=line, cex=cex, adj=adj)
 
 dev.off()
 
+transit_sample_size_filtered <- rasterFromXYZ(filter(data.frame(rasterToPoints(transit_sample_size)),
+                                       VWC_global_transit_sample_size>5))
 
+plot(transit_sample_size_filtered)
+plot(transit_sample_size)
 
 #-------------------------------------------------------------------------------
-#map out points of water content -----
+# map out points of water content -----
 
 #plot land covers
 # use most recent year (2015) in the multi-year dataset of landcover
@@ -115,3 +121,11 @@ forest.poly<-rasterToPolygons(forest)
 plot(forest.poly)
 
 #stopped here 8/18/2021
+
+#-------------------------------------------------------------------------------
+# Example map of dimension reduction points (To Do) -----
+#-------------------------------------------------------------------------------
+# Variogram example -----
+#-------------------------------------------------------------------------------
+# Sample size per land cover for dimension reduction ------
+#-------------------------------------------------------------------------------

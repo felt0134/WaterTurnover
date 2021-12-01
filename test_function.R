@@ -1,230 +1,95 @@
 
-load_et_by_filepath<-function(x,process){
-  #https://gis.stackexchange.com/questions/386628/working-with-irregularly-spaced-gridded-netcdf-data-in-r
-  
-  #vector memory limit gets reached with the expand grid approach for the ET data but not the climate data.
-  #can use the expand grid approach to get the climate data on a regular grid because it is simpler
-  # and works betetr than the dataframe-based approach with the T data.
-  
-  #open netcdf file
-  nc_data <- nc_open('./../../../Data/climate/aridity.nc')
-  #nc_data <- nc_open('./../../../Data/ET/9km_smap_purdy_2015_2017/9km_monthly/PTJPL_SMAP_ET_201504_mean.nc')
-  
-  raster_from_nc_expand_grid <- function(file,variable){
-  
-  #load file
-  nc_data <- nc_open(file)
-    
-  # Longitude 
-  lon <- ncvar_get(nc_data ,"lon")
-  dim(lon)
-  # Latitude 
-  lat <- ncvar_get(nc_data ,"lat")
-  dim(lat)
-  # Variable
-  var <- ncvar_get(nc_data,variable)
-  
-  #convert to raster
-  latlong = expand.grid(long=lon, lat=lat)
-  latlong = data.frame(cbind(latlong, aridity = c(var)))
-  latlong = na.exclude(latlong)
-  colnames(latlong) <- c('x','y',variable)
-  
-  latlong <- fix_grid(latlong)
-  
-  return(latlong)
-  
-  }
-  
-  #re-gridded aridity 
-  mean_aridity <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
-                                     'aridity20yrs')
-  #save
-  writeRaster(mean_aridity,'./../../../Data/Derived_data/Climate/mean_aridity.tif')
-  
-  
-  plot(test)
-  
-  
-  nc_data <- nc_open('./../../../Data/climate/aridity.nc')
-  
-  # Longitude 
-  lon <- ncvar_get(nc_data ,"lon")
-  
-  # Latitude 
-  lat <- ncvar_get(nc_data ,"lat")
-  
-  # Variable
-  var <- ncvar_get(nc_data,'aridity20yrs')
-  
-  #convert to raster
-  latlong = expand.grid(long=lon, lat=lat)
-  latlong = data.frame(cbind(latlong, aridity = c(var)))
-  
-  dim(latlong)
-  
-  dim(latlong)
-  
-  plot(latlong)
-  
-  
-  
-  
-  fix_grid_2<-function(x){
-    
-    e<-extent(x[c(1:2)])
-    r<-raster(e,ncol=1000,nrow=1000,crs='+proj=longlat +datum=WGS84')
-    r_new<-rasterize(x[,1:2],r,x[3],fun=mean)
-    return(r_new)
-    
-  }
-  
-  
-  
-  
-  
-  # old ----
-  rasterFromXYZ(latlong)
-  
-  latlong = expand.grid(long=lon, lat=lat)
-  latlong = data.frame(cbind(latlong, aridity = c(ET)))
-  colnames(latlong) <- c('x','y','z')
-  latlong<-na.omit(latlong)
-  latlong <- fix_grid(latlong)
-  r_new<-rasterize(latlong[,1:2],latlong[3],fun=mean)
-  plot(latlong$long,latlong$lat)
-  extent(latlong[c(1:2)])
-  aridity_raster <- fix_grid(latlong)
-  aridity_raster <-resample(aridity_raster,biomass)
-  plot(aridity_raster)
-  
-  coordinates(latlong)=~long+lat
-  crs(latlong) <- '+proj=longlat +datum=WGS84'
-  plot(raster(latlong))
-  spplot(latlong,"PM25")
-  
-  # get longitude and latitude
-  
-  # Longitude 
-  lon <- ncvar_get(nc_data ,"lon")
-  nlon <- dim(lon)
-  lon.df<-as.data.frame(lon)
-  #head(lon.df)
-  
-  lon.df$ID <- rownames(lon.df)
-  #summary(lon.df)
-  
-  lon.df.melted <- reshape2::melt(lon.df, 
-                                  id.vars = c("ID"),
-                                  variable.name = "lon")
-  
-  #head(lon.df.melted)
-  
-  #make unique column ID
-  lon.df.melted$RegionSite <- paste0(lon.df.melted$ID,lon.df.melted$lon)
-  
-  #check no duplicates
-  # dim(lon.df.melted)
-  # length(unique(lon.df.melted$RegionSite))
-  
-  lon.df.melted <- lon.df.melted[-c(1,2)]
-  colnames(lon.df.melted) <- c('x','ID')
-  
-  #head(lon.df.melted)
-  
-  # Latitude #
-  lat <- ncvar_get(nc_data ,"lat")
-  nlat <- dim(lat)
-  
-  # Covert to data frame
-  lat.df<-as.data.frame(lat)
-  head(lat.df)
-  #head(lat.df)
-  
-  lat.df$ID <- rownames(lat.df)
-  #summary(lat.df)
-  
-  lat.df.melted <- reshape2::melt(lat.df, 
-                                  id.vars = c("ID"),
-                                  variable.name = "lat")
-  
-  
-  #head(lat.df.melted)
-  
-  #make unique column ID
-  lat.df.melted$RegionSite <- paste0(lat.df.melted$ID,lat.df.melted$lat)
-  
-  lat.df.melted <- lat.df.melted[-c(1,2)]
-  colnames(lat.df.melted) <- c('y','ID')
-  
-  
-  lat.df.melted$ID <- gsub('lat','',lat.df.melted$ID)
-  lon.df.melted$ID <- gsub('lon','',lon.df.melted$ID)
-  
-  head(lat.df.melted)
-  head(lon.df.melted)
-  
-  #merge lat and long
-  lat_lon <- merge(lat.df.melted,lon.df.melted,by=c('ID'))
-  #head(lat_lon)
-  
-  #re-order columns
-  lat_lon_order <- c("x", "y", "ID")
-  lat_lon <- lat_lon[, lat_lon_order]
-  #head(lat_lon)
-  
-  lat_lon$ID <- 1
-  lat_long_raster <- fix_grid(lat_lon)
-  plot(lat_long_raster)
-  
-  # Get ET #
-  ET <- ncvar_get(nc_data,'SMAPcanopy_transpiration')
-  # fix.aridity<- fix_grid(data.frame(rasterToPoints(ET)))
-  # plot(fix.aridity)
-  # biomass<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
-  # fix.aridity <- resample(fix.aridity,biomass)
-  
-  #head(ET)
-  #summary(ET)
-  #str(ET)
-  
-  ET.df<-as.data.frame(ET)
-  #head(ET.df)
-  
-  ET.df$ID <- rownames(ET.df)
-  #summary(ET.df)
-  
-  ET.df.melted <- reshape2::melt(ET.df, 
-                                 id.vars = c("ID"),
-                                 variable.name = "ET")
-  #head(ET.df.melted)
-  hist(ET.df.melted$value)
-  
-  #make unique column ID
-  ET.df.melted$RegionSite <- paste0(ET.df.melted$ID,ET.df.melted$ET)
-  
-  ET.df.melted <- ET.df.melted[-c(1,2)]
-  colnames(ET.df.melted) <- c('ET','ID')
-  ET.df.melted$ID <- gsub('V1','',ET.df.melted$ID)
-  #head(ET.df.melted)
-  
-  # Merge with lat/lon data frame
-  
-  lat_lon_et <- merge (lat_lon,ET.df.melted,by=c('ID'))
-  summary(lat_lon_et)
-  
-  # Turn into raster
-  lat_lon_et_na_rm <- na.omit(lat_lon_et)
-  lat_lon_et_na_rm <- data.frame(lat_lon_et_na_rm[c(2,3,4)])
-  lat_lon_et_raster <-fix_grid(lat_lon_et_na_rm)
-  
-  plot(lat_lon_et$x,lat_lon_et$y)
-  # cleanup
-  rm(lat,lon,lat.df,lon.df,lat.df.melted,lon.df.melted,
-     lat_lon_et,lat_lon,ET.df,ET.df.melted,ET,nc_data)
-  
-  
-  return(lat_lon_et_na_rm)
-  
-}
 
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
+
+
+global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                    shrublands_unfiltered,tundras_unfiltered,
+                                    croplands_unfiltered)
+plot(global_unfilitered)
+summary(global_unfilitered)
+
+quantile_95 = quantile(var_df$layer,prob=0.95)
+quantile_75 = quantile(x$layer,prob=0.75)
+quantile_50 = quantile(x$layer,prob=0.55)
+quantile_40 = quantile(x$layer,prob=0.40)
+quantile_30 = quantile(x$layer,prob=0.30)
+quantile_20 = quantile(x$layer,prob=0.20)
+quantile_10 = quantile(x$layer,prob=0.10)
+quantile_5 = quantile(x$layer,prob=0.05)
+
+
+
+# colour_func <- function(x){
+#   
+#   quantile_90 = quantile(x$layer,prob=0.95)
+#   quantile_75 = quantile(x$layer,prob=0.75)
+#   quantile_50 = quantile(x$layer,prob=0.55)
+#   quantile_40 = quantile(x$layer,prob=0.40)
+#   quantile_30 = quantile(x$layer,prob=0.30)
+#   quantile_20 = quantile(x$layer,prob=0.20)
+#   quantile_10 = quantile(x$layer,prob=0.10)
+#   quantile_5 = quantile(x$layer,prob=0.05)
+#   
+#   ifelse(x$layer > quantile_90, 'darkblue',
+#          # ifelse(x$layer < quantile_75, 'cyan4',
+#                 ifelse(x$layer > quantile_50, 'cadetblue3',
+#                        # ifelse(x$layer > quantile_40, 'cadetblue', 
+#                               # ifelse(x$layer < quantile_30, 'gold',
+#                                      ifelse(x$layer > quantile_20, 'goldenrod2', 
+#                                             ifelse(x$layer > quantile_10, 'darkorange3', 
+#                                                    ifelse(x$layer > quantile_5, 'darkorange', "red")))))
+# }
+
+library(scales)
+library("rnaturalearth")
+library("rnaturalearthdata")
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+var_df <- data.frame(rasterToPoints(global_unfilitered))
+var_df <- var_df %>% filter(layer < quantile_95)
+quantile_50_2 = quantile(var_df$layer,prob=0.50)
+summary(var_df)
+hist(var_df$layer)
+
+str(var_df)
+p <- ggplot()
+p <- p + geom_raster(data = var_df , aes(x = x, y = y, fill = layer))
+p <- p + coord_equal()
+p <- p + scale_fill_gradientn(
+  colours=c("red", "yellow","white", "skyblue", "darkblue"),
+  #breaks=c(min(var_df$layer),median(var_df$layer),max(var_df$layer)),
+  #labels=c("Minimum",0.5,"Maximum"),
+  values = rescale(c(min(var_df$layer),
+                     quantile_50_2,
+                     quantile_50_2 + 0.01,
+                     max(var_df$layer)))) +
+  xlab('') +
+  ylab('') +
+  theme(
+    axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=10),
+    axis.title.x = element_text(color='black',size=10),
+    axis.title.y = element_text(color='black',size=10),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    #legend.text = element_text(size=2.25),
+    #legend.position = c(0.7,0.1),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    legend.position = 'bottom',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
+
+p
+
+# p <- p + scale_fill_gradientn(colours = colour_func(var_df))
+# p

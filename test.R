@@ -1,5 +1,5 @@
 
-# compare VWC from VOD and tissue density -----
+# compare VWC from VOD and tissue density (need to know how we are going to convert) -----
 
 #import DF
 dry_biomass<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
@@ -28,46 +28,56 @@ plot(dry_biomass)
 # 1000 mm3 volume = 1000 length*1000width*XXHeight
 # 1000/1000000 = .001 mm of water on a m2
 
-dry_biomass<-dry_biomass*.001
+water_storage<-dry_biomass*.001
 
 #assume water is 0.41 of dry biomass:
-#0.41/0.59
-dry_biomass<-dry_biomass*0.70
+#0.41/0.59 (I don't remember the logic of this)
+water_storage<-water_storage*0.70
+plot(water_storage)
+
+#or
+water_storage<-water_storage*0.41
 
 
 #import VOD->VWC raster (in mm/m^2) 
-vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+
+#load in annual storage
+grasslands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_grassland_unfiltered.tif')
+forests_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_forest_unfiltered.tif')
+shrublands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered_storge<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_tundra_unfiltered.tif')
+croplands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_cropland_unfiltered.tif')
+
+
+vwc_from_vod = raster::merge(grasslands_unfiltered_storge,forests_unfiltered_storge,
+                        shrublands_unfiltered_storge,tundras_unfiltered_storge,
+                        croplands_unfiltered_storge)
+
+plot(vwc_from_vod)
+
+vwc_from_vod_2 <- data.frame(rasterToPoints(vwc_from_vod))
+head(storage_df)
 
 #turn to DF
-vwc_from_vod_df_2 <- data.frame(rasterToPoints(vwc_from_vod))
+# vwc_from_vod_df_2 <- data.frame(rasterToPoints(vwc_from_vod))
 
 #turn biomass raster to df
 
 #resample so the lat/lons match up nicely
-dry_biomass_2 <- resample(dry_biomass,vwc_from_vod)
+water_storage_2 <- resample(water_storage,vwc_from_vod)
 
-#then merge
-dry_biomass_df_2 <- data.frame(rasterToPoints(dry_biomass_2))
+#mask
+water_storage_2 = mask(water_storage_2,vwc_from_vod)
+plot(water_storage_2)
 
-#merge them
-merge_biomass_vwc <- merge(vwc_from_vod_df_2,dry_biomass_df_2,by=c('x','y'))
-head(merge_biomass_vwc)
+#stack
+stack_storage = stack(water_storage_2,vwc_from_vod)
+plot(stack_storage)
 
-#calculate difference
-merge_biomass_vwc$diff <- (merge_biomass_vwc$aboveground_dry_biomass_density_aggregate_30X - 
-                             merge_biomass_vwc$annual_storage_vwc_global_unfiltered)
-summary(merge_biomass_vwc)
-# median diff of -0.6 mm/m^2
-
-#make to raster
-merge_biomass_vwc_raster <- rasterFromXYZ(merge_biomass_vwc[c(1,2,5)])
-crs(merge_biomass_vwc_raster) <-  '+proj=longlat +datum=WGS84 +no_defs'
-
-#map out the differences
-png('Figures/2016_storage_difference_0.41.png',
-    width=8,height=6,units="in",res=300)
-plot(merge_biomass_vwc_raster,main='VWC difference (biomass-based minus VOD-based)')
-dev.off()
+#get difference
+storage_diff <- stack_storage$layer - stack_storage$aboveground_dry_biomass_density_aggregate_30X
+plot(storage_diff)
+summary(storage_diff)
 
 #look at correlation
 cor(merge_biomass_vwc$annual_storage_vwc_global_unfiltered,
@@ -92,63 +102,14 @@ text(15,10,'1:1 line')
 
 dev.off()
 
-#can we compare monthly deviations in water storage?
 
-#try for grasslands
-head(merge_biomass_vwc)
 
-#loop it
-
-month_list <- c('january','february','march','april','may','june','july','august',
-                'september','october','november','december')
-#month_list <- 'january'
-store_list<-list()
-
-for( i in month_list){
-
-#create a reference raster to resample to
-months.grasslands.df.july<-subset(months.grasslands.df,month==i) 
-months.grasslands.df.july.raster<-rasterFromXYZ(months.grasslands.df.july[c(1,2,4)])
-#crs(months.grasslands.df.july.raster) <- '+proj=longlat +datum=WGS84'
-
-#resample to match up coordinates, then covert back to a dataframe to merge
-merge_biomass_vwc_raster<- rasterFromXYZ(merge_biomass_vwc[c(1,2,3)])
-#crs(merge_biomass_vwc_raster) <- '+proj=longlat +datum=WGS84'
-merge_biomass_vwc_raster<-resample(merge_biomass_vwc_raster,months.grasslands.df.july.raster)
-merge_biomass_vwc_raster<-data.frame(rasterToPoints(merge_biomass_vwc_raster))
-
-months.grasslands.df.july<-data.frame(rasterToPoints(months.grasslands.df.july.raster))
-months.grasslands.df.july$month = i
-
-#merge
-grasslands_monthly_vwc_biomass_storage <- 
-  merge(merge_biomass_vwc_raster,months.grasslands.df.july,by=c('x','y'))
-
-store_list[[i]] <- grasslands_monthly_vwc_biomass_storage
-  
-}
-
-store_list_df <- do.call('rbind',store_list)
-head(store_list_df)
-store_list_df$diff <- abs(store_list_df$annual_storage_vwc_global_unfiltered -
-                            store_list_df$layer)
-
-storage_deviations <- aggregate(diff~x+y,sd,data=store_list_df)
-
-# Remove NAs
-storage_deviations <- storage_deviations %>%
-  dplyr::filter(!diff=='NA') 
-head(storage_deviations)
-summary(storage_deviations)
-plot(rasterFromXYZ(storage_deviations))
-
-#stopped here 08/11/2021. The grid become irregular. 
                                                                
 
 
 # compare global amounts of water in cubic km -----
 
-#now go from mm/m^2 to km cubed
+#now go from mm/m^2 to km cubed (wait to calculate)
 dry_biomass_cubed <- get_km_cubed(dry_biomass)
 plot(dry_biomass)
 
@@ -164,7 +125,7 @@ sum(dry_biomass_cubed_df$aboveground_dry_biomass_density_aggregate_30X)
 #8000.837 when we assuming water is 50% fresh mass
 # 5601.304 when we assuming water is 41% fresh mass
 
-sum(vwc_from_vod_cubed_df$annual_storage_vwc_global_unfiltered)
+sum(vwc_from_vod_cubed_df$layer)
 #6420.823
 
 #compare total values (for same pixel representation)
@@ -193,21 +154,29 @@ dry_biomass_resampled<-data.frame(rasterToPoints(dry_biomass_df))
 # in short: assumming water is 50% of total biomass leads to much higher
 # estimates of VWC than VOD
 
-# now compare to the ground-based estimates in forests -----
+# compare to the ground-based estimates in forests.grasslands,tundra -----
 
 #import
-ground_estimates <- read.csv('./../../../Data/Water_content/woodwater_empirical_greg.csv')
+ground_estimates <- read.csv('./../../../woodwater/Data/site_WC_estimates.csv')
 #head(ground_estimates)
 
+#use only cross-checked sites
+ground_estimates <- subset(ground_estimates,Exclude=='No')
+unique(ground_estimates$Exclude)
+
 #narrow down/rename columns
-ground_estimates <-ground_estimates[c('Lat','Long','mean.moisture')]
-colnames(ground_estimates) <- c('y','x','moisture.content')
+ground_estimates <-ground_estimates[c('Land.Cover.Type', 'Lat','Long','mean.moisture')]
+colnames(ground_estimates) <- c('Land.Cover.Type','y','x','moisture.content')
+
+head(ground_estimates)
 
 #turn into normally gridded raster
-ground_estimates <-ground_estimates[c(2,1,3)]
+ground_estimates <-ground_estimates[c(1,3,2,4)]
 ground_estimates <- na.exclude(ground_estimates)
-ground_estimates <- fix_grid(ground_estimates)
-#plot(ground_estimates)
+
+#forest
+ground_estimates_forest <- subset(ground_estimates,Land.Cover.Type=='Forest')
+
 
 #re-import biomass data
 dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
@@ -222,56 +191,89 @@ dry_biomass_only<-dry_biomass_only*1000000
 #1 hectare = 10000 square meters to get g/m^2
 dry_biomass_only<-dry_biomass_only/10000
 
-#sinze ground estimates are at coarser resolution, resample to that
-dry_biomass_only <- resample(dry_biomass_only,ground_estimates)
+
+#loop through
+df_list = list()
+
+for(i in 1:nrow(isotope)){
+  
+  df <- isotope[i,]
+  
+  coord <- cbind(df[4],df[3]) #get coordinate
+  
+  transit.isotope <- df[7]
+  
+  season <- df$season
+  
+  if(season=='Winter'){
+    
+    value <- extract(Winter_global,coord)
+    
+  }else if(season=='Spring'){
+    
+    value <- extract(Spring_global,coord)
+    
+    
+  }else if(season=='Summer'){
+    
+    value <- extract(Summer_global,coord)
+    
+  }else if(season=='Fall'){
+    
+    value <- extract(Fall_global,coord)
+    
+    
+  }
+  
+  
+  
+  df.2 <- data.frame(coord)
+  df.2$transit.vod <- value
+  df.2$transit.isotope <- as.numeric(transit.isotope)
+  
+  df_list[[i]] <-df.2
+  
+  
+}
+
+transit.df.2 <- data.frame(do.call('rbind',df_list))
+
+
+
+
+#since ground estimates are at coarser resolution, resample to that
+dry_biomass_only <- resample(dry_biomass_only,ground_estimates_forest)
 
 #merge them
-ground_estimates_df <-merge(data.frame(rasterToPoints(ground_estimates)),
+ground_estimates_forest_df <-merge(data.frame(rasterToPoints(ground_estimates_forest)),
                             data.frame(rasterToPoints(dry_biomass_only)),
                             by=c('x','y'))
-#head(ground_estimates_df)
+#head(ground_estimates_forest_df)
 #length(unique(ground_estimates_df$layer)) 
 
-#convert water content to water
-ground_estimates_df$veg_water <- 
-  ground_estimates_df$layer*ground_estimates_df$aboveground_dry_biomass_density_aggregate_30X
+#convert water content to water in g/m^2
+ground_estimates_forest_df$veg_water <- 
+  ground_estimates_forest_df$layer*ground_estimates_forest_df$aboveground_dry_biomass_density_aggregate_30X
 
 #convert from g/m^2 to mm/m^2
-ground_estimates_df$veg_water <- ground_estimates_df$veg_water*.001
-ground_estimates_df <- ground_estimates_df[c(1,2,5)]
+ground_estimates_forest_df$veg_water <- ground_estimates_forest_df$veg_water*.001
+ground_estimates_forest_df <- ground_estimates_forest_df[c(1,2,5)]
 
-#re-import VOD-> VWC raster and turn into data frame
-vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+#import VOD-> VWC raster and turn into data frame (repeated code)
+vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
 
 #reample this to the empirical dataset
-vwc_from_vod <- resample(vwc_from_vod,ground_estimates)
+vwc_from_vod <- resample(vwc_from_vod,ground_estimates_forest)
 
 #merge with ground-based df
-ground_estimates_df <- merge(ground_estimates_df,data.frame(rasterToPoints(vwc_from_vod)))
+ground_estimates_forest_df <- merge(ground_estimates_forest_df,data.frame(rasterToPoints(vwc_from_vod)))
 
-png('Figures/Supporting/vod_versus_groundbased_storage.png',
-    width=1000,height=1000,res=150)
+cor(ground_estimates_forest_df$veg_water,ground_estimates_forest_df$annual_storage_vwc_global_unfiltered)
+0.87
 
-plot(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_df,
-     xlab='Ground-based water storage',ylab='VOD-based water storage',cex=4.5)
-# Make 1:1 line
-abline(a=0,b=1,col='black',lwd=3)
-text(7,6,'1:1 line')
+ground_estimates_forest_df$veg <- 'Forest'
 
-dev.off()
-
-summary(lm(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_df))
-
-#see the slope of VOD and VWC....
-head(ground_estimates_df)
-
-#convert back to vod
-ground_estimates_df$vod <- ground_estimates_df$annual_storage_vwc_global_unfiltered*0.11
-summary(lm(vod~veg_water,data=ground_estimates_df))
-#beta paramter = 0.08
-
-
-# compare to ground-based estimates in grasslands ------
+# compare to ground-based estimates in grasslands 
 
 
 # Load in poa and herb X2 checked water contet, subset to grasslands
@@ -281,9 +283,13 @@ grassland_wc<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/gr
 head(grassland_wc)
 #100 observations
 
+grassland_wc <- grassland_wc %>%
+  dplyr::filter(Exclude=='No')
+
 #get to XYZ format
 grassland_wc <-grassland_wc[c(2,3,4)]
-
+summary(grassland_wc)
+hist(grassland_wc$average.water.content)
 ground_wc_raster <- fix_grid(grassland_wc)
 plot(ground_wc_raster)
 
@@ -316,7 +322,7 @@ ground_estimates_grassland_df <-merge(data.frame(rasterToPoints(ground_wc_raster
 
 #convert water content to water (in g/m^2)
 ground_estimates_grassland_df$veg_water <- 
-  ground_estimates_grassland_df$layer*ground_estimates_grassland_df$aboveground_dry_biomass_density_aggregate_30X
+  (ground_estimates_grassland_df$layer)*(ground_estimates_grassland_df$aboveground_dry_biomass_density_aggregate_30X)
 
 #head(ground_estimates_grassland_df)
 
@@ -324,10 +330,10 @@ ground_estimates_grassland_df$veg_water <-
 ground_estimates_grassland_df$veg_water <- ground_estimates_grassland_df$veg_water*0.001
 head(ground_estimates_grassland_df)
 
-#re-import VOD-> VWC raster and turn into data frame (repeated code)
-vwc_from_vod <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+#import VOD-> VWC raster and turn into data frame (repeated code)
+vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
 
-#reample this to the empirical dataset
+#resample this to the empirical dataset
 vwc_from_vod <- resample(vwc_from_vod,ground_wc_raster)
 
 #merge with ground-based df
@@ -338,34 +344,128 @@ ground_estimates_grassland_df <- merge(ground_estimates_grassland_df,
 #merge with ground-based df
 ground_estimates_grassland_df <- merge(ground_estimates_grassland_df,data.frame(rasterToPoints(vwc_from_vod)))
 
-#filter out things over 2000 g of aboveground biomass because it is unlikely to be a grassland.
-ground_estimates_grassland_df_filtered <- ground_estimates_grassland_df %>%
-  dplyr::filter(aboveground_dry_biomass_density_aggregate_30X < 1000)
+
 
 #dim(ground_estimates_grassland_df_filtered) #46 observations
 
-cor(ground_estimates_grassland_df_filtered$annual_storage_vwc_global_unfiltered,
-    ground_estimates_grassland_df_filtered$veg_water)
-#0.47
+cor(ground_estimates_grassland_df$annual_storage_vwc_global_unfiltered,
+    ground_estimates_grassland_df$veg_water)
+#0.90
+
+#merge with others
+ground_estimates_grassland_df <- ground_estimates_grassland_df[c(1,2,3,6)]
+ground_estimates_grassland_df <- ground_estimates_grassland_df[c(1,2,4,3)]
+ground_estimates_grassland_df$veg <- 'Grassland'
+
+# compare to ground-based estimates in tundra
 
 
-png('Figures/Supporting/vod_versus_groundbased_storage_grassland.png',
-    width=1000,height=1000,res=150)
+#import
+ground_estimates <- read.csv('./../../../woodwater/Data/site_WC_estimates.csv')
+#head(ground_estimates)
 
-plot(annual_storage_vwc_global_unfiltered~veg_water,data=ground_estimates_grassland_df_filtered,
-     xlab='Ground-based water storage',ylab='VOD-based water storage',cex=4.5)
-# Make 1:1 line
-abline(a=0,b=1,col='black',lwd=3)
-text(3.5,4,'1:1 line')
+#use only cross-checked sites
+ground_estimates <- subset(ground_estimates,Exclude=='No')
+unique(ground_estimates$Exclude)
 
-dev.off()
+#narrow down/rename columns
+ground_estimates <-ground_estimates[c('Land.Cover.Type', 'Lat','Long','mean.moisture')]
+colnames(ground_estimates) <- c('Land.Cover.Type','y','x','moisture.content')
 
+head(ground_estimates)
 
-#convert back to vod
-ground_estimates_grassland_df_filtered$vod <- ground_estimates_grassland_df_filtered$annual_storage_vwc_global_unfiltered*0.11
-summary(lm(vod~veg_water,data=ground_estimates_grassland_df_filtered))
-#beta parameter = 0.06
+#turn into normally gridded raster
+ground_estimates <-ground_estimates[c(1,3,2,4)]
+ground_estimates <- na.exclude(ground_estimates)
 
+#tundra
+ground_estimates_tundra <- subset(ground_estimates,Land.Cover.Type=='Tundra')
+
+ground_estimates_tundra <- fix_grid(ground_estimates_tundra[c(2,3,4)])
+#plot(ground_estimates_tundra)
+
+#re-import biomass data
+dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
+#get veg water in g/m^2:
+
+dry_biomass_only <- dry_biomass_only/10
+
+#1000000 grams = 1 megagram
+dry_biomass_only<-dry_biomass_only*1000000
+
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass_only<-dry_biomass_only/10000
+
+#since ground estimates are at coarser resolution, resample to that
+dry_biomass_only <- resample(dry_biomass_only,ground_estimates_tundra)
+
+#merge them
+ground_estimates_tundra_df <-merge(data.frame(rasterToPoints(ground_estimates_tundra)),
+                                   data.frame(rasterToPoints(dry_biomass_only)),
+                                   by=c('x','y'))
+#head(ground_estimates_tundra_df)
+#length(unique(ground_estimates_df$layer)) 
+
+#convert water content to water in g/m^2
+ground_estimates_tundra_df$veg_water <- 
+  ground_estimates_tundra_df$layer*ground_estimates_tundra_df$aboveground_dry_biomass_density_aggregate_30X
+
+#convert from g/m^2 to mm/m^2
+ground_estimates_tundra_df$veg_water <- ground_estimates_tundra_df$veg_water*.001
+ground_estimates_tundra_df <- ground_estimates_tundra_df[c(1,2,5)]
+
+#import VOD-> VWC raster and turn into data frame (repeated code)
+vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+
+#reample this to the empirical dataset
+vwc_from_vod <- resample(vwc_from_vod,ground_estimates_tundra)
+
+#merge with ground-based df
+ground_estimates_tundra_df <- merge(ground_estimates_tundra_df,data.frame(rasterToPoints(vwc_from_vod)))
+
+cor(ground_estimates_tundra_df$veg_water,ground_estimates_tundra_df$annual_storage_vwc_global_unfiltered)
+0.73
+
+ground_estimates_tundra_df$veg <- 'Tundra'
+
+#combine with forest
+ground_estimates_forest_tundra <- rbind(ground_estimates_forest_df,ground_estimates_tundra_df)
+
+#combine with grassland
+ground_estimates_forest_tundra_grassland <- rbind(ground_estimates_grassland_df,
+                                                  ground_estimates_forest_tundra)
+
+#try to plot it out
+vwc_vod_plot <- ggplot(ground_estimates_forest_tundra_grassland,
+       aes(veg_water,annual_storage_vwc_global_unfiltered,fill=veg)) +
+  geom_point(size=5,pch=21) +
+  scale_fill_manual(values=c('Grassland'='blue','Forest'='white',
+                               'Tundra'='grey')) +
+  #geom_smooth(method='lm',linetype='dashed') +
+  annotate("text", x=9, y=8.3, label= "1:1 Line") +
+  geom_abline(slope=1) +
+  #geom_text(aes(label=x),hjust=0,vjust=0) +
+  xlab('VOD-based water storage (mm)') +
+  ylab('VWC-based water storage (mm)') +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=16),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=14),
+    legend.position = c(0.6,0.25),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
 
 # estimate uncertainty: sum in quadrature ------
 
@@ -517,218 +617,836 @@ test.merge <- raster::merge(uncertainty.range.list$grasslands,
 plot(log(test.merge))
 summary(test.merge)
 
-# truncate distribution -----
+#transit time versus sensitivity -----
 
-#library(truncdist)
 
-#simply truncate at 95th percentile
-get_turncated_dist <- function(land_cover,annual=T){
+#annual transit map (A)
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
 
-#get filepath
+global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                    shrublands_unfiltered,tundras_unfiltered,
+                                    croplands_unfiltered)
+slopes.df <- read.csv('coefs.df.csv')
+lc_names <- unique(slopes.df$region)
+
+lc_list <- list()
+
+for(i in lc_names){
+
+sensitivity_raster <- subset(slopes.df,region==i)
+sensitivity_raster <- rasterFromXYZ(sensitivity_raster[c(2,3,4)])
+plot(sensitivity_raster)
+
+sensitivity_raster_2 <- resample(sensitivity_raster,global_unfilitered)
+global_unfilitered_2 <- crop(global_unfilitered,extent(sensitivity_raster_2))
+global_unfilitered_2 <- mask(global_unfilitered_2,sensitivity_raster_2)
+plot(global_unfilitered_2)
+
+global_unfilitered_2_df <- data.frame(rasterToPoints(global_unfilitered_2))
+sensitivity_raster_2_df <- data.frame(rasterToPoints(sensitivity_raster_2))
+
+sens_transit <- merge(global_unfilitered_2_df,sensitivity_raster_2_df,by=c('x','y'))
+sens_transit$lc < i
+
+lc_list[[i]] <- sens_transit
+
+}
+
+
+
+
+plot(coef ~ layer, data=lc_list$shortgrass_steppe,xlab='transt time (days)',
+     ylab='NPP sensitivity to annual rainfall',col='red')
+plot(coef ~ layer, data=lc_list$northern_mixed_prairies,xlab='transt time (days)',
+     ylab='NPP sensitivity to annual rainfall',col='blue')
+plot(coef ~ layer, data=lc_list$hot_deserts,xlab='transt time (days)',
+     ylab='NPP sensitivity to annual rainfall',col='maroon')
+plot(coef ~ layer, data=lc_list$hot_deserts,xlab='transt time (days)',
+     ylab='NPP sensitivity to annual rainfall',col='maroon')
+
+summary(lm(slopes_raster ~ layer, data=sens_transit))
+
+
+
+#minimum transit
+
+grasslands_minimum <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_grassland_minimum_transit.tif')
+forests_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_forest_minimum_transit.tif')
+shrublands_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_shrubland_minimum_transit.tif')
+tundras_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_tundra_minimum_transit.tif')
+croplands_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_cropland_minimum_transit.tif')
+
+global_minimum <- raster::merge(grasslands_minimum,forests_minimum,
+                                shrublands_minimum,tundras_minimum,
+                                croplands_minimum)
+
+
+
+
+
+for(i in lc_names){
   
-if(annual==T){
-
-filepath<-paste0("./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_",land_cover,"_unfiltered.tif")
-
-}else{
+  sensitivity_raster <- subset(slopes.df,region==i)
+  sensitivity_raster <- rasterFromXYZ(sensitivity_raster[c(2,3,4)])
+  #plot(sensitivity_raster)
   
+  sensitivity_raster_2 <- resample(sensitivity_raster,global_minimum)
+  global_unfilitered_2 <- crop(global_minimum,extent(sensitivity_raster_2))
+  global_unfilitered_2 <- mask(global_unfilitered_2,sensitivity_raster_2)
+  plot(global_unfilitered_2)
   
-  filepath<-paste0("./../../../Data/Derived_Data/Turnover/Minimum/VWC_",land_cover,"_minimum_transit.tif")
+  global_unfilitered_2_df <- data.frame(rasterToPoints(global_unfilitered_2))
+  sensitivity_raster_2_df <- data.frame(rasterToPoints(sensitivity_raster_2))
+  
+  sens_transit <- merge(global_unfilitered_2_df,sensitivity_raster_2_df,by=c('x','y'))
+  sens_transit$lc <- i
+  
+  lc_list[[i]] <- sens_transit
   
 }
 
-#load raster
-grasslands_turnover <- raster(filepath)
+
+lc_df <- do.call('rbind',lc_list)
+
+ggplot(lc_df,aes(layer,coef)) +
+  facet_wrap(~lc,scales='free') +
+  geom_point(aes(alpha=0.5),size=1) +
+  #geom_smooth(method='lm')
+
+sensitivity_raster_2 <- resample(sensitivity_raster,global_minimum)
+global_unfilitered_2 <- crop(global_minimum,extent(sensitivity_raster_2))
+global_unfilitered_2 <- mask(global_unfilitered_2,sensitivity_raster_2)
+plot(global_unfilitered_2)
+
+global_unfilitered_2_df <- data.frame(rasterToPoints(global_unfilitered_2))
+sensitivity_raster_2_df <- data.frame(rasterToPoints(sensitivity_raster_2))
+
+sens_transit <- merge(global_unfilitered_2_df,sensitivity_raster_2_df,by=c('x','y'))
+
+plot(slopes_raster ~ layer, data=sens_transit,xlab='minimum transt time (days)',
+     ylab='NPP sensitivity to annual rainfall')
+
+summary(lm(slopes_raster ~ layer, data=sens_transit))
+
+# violin plot ------
+
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
+
+global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                    shrublands_unfiltered,tundras_unfiltered,
+                                    croplands_unfiltered)
+
+unfiltered_data <- c(grasslands_unfiltered,forests_unfiltered,shrublands_unfiltered,
+                     tundras_unfiltered,croplands_unfiltered)
+annual_unfiltered_list_95<-list()
+
+for(i in unfiltered_data){
+  
+  unfiltered_df<-as.data.frame(rasterToPoints(i))
+  #head(unfiltered_df)
+  colnames(unfiltered_df) <- c('x','y','transit')
+  
+  quantile_transit_95 <- quantile(unfiltered_df$transit,prob=0.99)
+  
+  filtered_df = unfiltered_df %>%
+    dplyr::filter(transit < quantile_transit_95)
+  
+  filtered_df$land_cover <- names(i)
+  filtered_df$land_cover <- gsub("_unfiltered","",filtered_df$land_cover)
+  filtered_df$land_cover <- gsub("annual_transit_vwc_","",filtered_df$land_cover)
+  
+  annual_unfiltered_list_95[[names(i)]] <- data.frame(filtered_df)
+  
+}
+
+annual_filtered_df <- do.call('rbind',annual_unfiltered_list_95)
+head(annual_filtered_df)
+aggregate(transit~land_cover,max,data=annual_filtered_df)
+
+?stat_function
+cdf_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit)) +
+  geom_violin(width=3.1) +
+  geom_boxplot(width=.1) +
+  # geom_point(stat="ecdf",size=1) +
+  # geom_line(stat="ecdf",size=1) +
+  #geom_function(fun=pgamma,args=list(shape=2,scale=3)) +
+  # scale_y_continuous(expand = c(0,0),limits = c(0,1.03)) +
+  # scale_x_continuous(expand = c(0,0),limits = c(0,41)) +
+  # scale_colour_manual(values=c('grassland'='blue','forest'='maroon',
+  #                              'tundra'='grey','shrubland'='purple','cropland'='black'),
+  #                     labels=c('grassland'='Grassland','forest'='Forest',
+  #                              'tundra'='Tundra','shrubland'='Shrubland',
+  #                              'cropland'='Cropland')) +
+  # geom_hline(yintercept = 0.5,color='black',linetype='dashed') +
+  # geom_hline(yintercept = 1,color='black',linetype='dashed') +
+  ylab('Annual transit time (days)') +
+  xlab('') +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=16),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=12),
+    legend.position = c(0.75,0.70),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
+# correlate storage with T ------
+
+#load annual storage
+grasslands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_grassland_unfiltered.tif')
+forests_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_forest_unfiltered.tif')
+shrublands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered_storge<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_tundra_unfiltered.tif')
+croplands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_cropland_unfiltered.tif')
+
+
+storage = raster::merge(grasslands_unfiltered_storge,forests_unfiltered_storge,
+                        shrublands_unfiltered_storge,tundras_unfiltered_storge,
+                        croplands_unfiltered_storge)
+
+plot(storage)
+
+storage_df <- data.frame(rasterToPoints(storage))
+head(storage_df)
+
+cor.list <- list()
+slope.list <- list()
+model_list <- list()
+lc_names_2 <- c('Grassland','Shrubland','Cropland','Forest','Tundra')
+
+for(i in lc_names_2){
+
+#load annual cumulative T
+grassland_annual_stack = import_cumulative_transp(i)
+grassland_annual_stack <- resample(grassland_annual_stack,storage)
+
+transp_df <- data.frame(rasterToPoints(grassland_annual_stack))
+
+colnames(transp_df) <- c('x','y','canopy_transpiration_mm_m2')
+
+# get rid of pixels where cumulative T is zero
+transp_df <- transp_df %>%
+  dplyr::filter(canopy_transpiration_mm_m2 > 1)
+head(transp_df)
+
+merge_df <- merge(transp_df,storage_df,by=c('x','y'))
+
+
+cor.list[[i]] <- cor(merge_df$layer,merge_df$canopy_transpiration_mm_m2)
+slope.list[[i]] <- coef(lm(canopy_transpiration_mm_m2~layer,merge_df))[2]
+model_list[[i]] <- summary(lm(canopy_transpiration_mm_m2~layer,merge_df))
+df_list[[i]] <- merge_df
+
+# plot(canopy_transpiration_mm_m2~layer,data=merge_df, xlab='S',ylab='T',
+#      main=i)
+
+}
+
+
+model1 <- lm(canopy_transpiration_mm_m2~layer,merge_df)
+summary(model1)
+
+# correlate T with storage for summer months -----
+
+
+
+#load VWC data
+
+outfile <- './../../../Data/Derived_data/VWC/'
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,3,4,17)] #remove december 2016
+
+
+vwc.list<-list()
+for(j in ecoregion_dir[1:12]){
+  
+  
+  test<-fread(j)
+  test.vwc<-aggregate(vwc~x+y,mean,data=test)
+  test.vwc$month <- j
+  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2016_','',test.vwc$month)
+  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2015_','',test.vwc$month)
+  test.vwc$month <- gsub('.csv','',test.vwc$month)
+  #test.vwc$month <- gsub('.csv','',test.vwc$month)
+  test.vwc$month <-as.numeric(as.character(test.vwc$month))
+  
+  vwc.list[[j]] <- test.vwc
+  
+  
+  
+}
+
+test.vwc<-do.call('rbind',vwc.list)
+rownames(test.vwc) = NULL
+
+ecoregion_list <- c('Grassland','Forest','Shrubland','Tundra','Cropland')
+summer.ecoregion.list <- list()
+summer.slopes.list <- list()
+
+for(i in ecoregion_list){
+
+seasonal <- import_monthly_transp_2(i)
+
+if(i=='Grassland'){
+  
+  ecoregion = 'grassland'}else if(i == 'Forest'){
+
+  ecoegion = 'forest'}else if(i == 'Shrubland'){
+  
+  ecoregion = 'shrubland'}else if(i == 'Tundra'){
+    
+  ecoregion = 'tundra'}else if(i =='Cropland'){
+    
+  ecoregion = 'cropland'
+  
+  }
+
+
+transp.stack = seasonal
+
+test_turnover_function <- get_seasonal_turnover_2(season='june_august')
+
+test_turnover_function$season <- 'summer'
+
+test_turnover_function$ecoregion <- i
+
+summer.slopes.list[[i]] <- coef(lm(canopy_transpiration_mm_m2~storage_mm,data=test_turnover_function))
+summer.ecoregion.list[[i]] <- test_turnover_function
+
+}
+
+
+#bind to single data frame
+summer.df<-do.call('rbind',summer.ecoregion.list)
+head(summer.df)
+
+#correlation across the globe
+cor(summer.df$canopy_transpiration_mm_m2,summer.df$storage_mm)
+#0.29
+
+#by ecoregion
+
+
+for(i in ecoregion_list){
+  
+  print(i)
+  summer_subset <- subset(summer.df,ecoregion==i)
+  print(cor(summer_subset$canopy_transpiration_mm_m2,summer_subset$storage_mm))
+  
+  
+}
+
+
+
+
+#compare transit with isotope estimates -----
+
+#import annual transit
+# grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+# forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+# shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+# tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+# croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
+# 
+# global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+#                                     shrublands_unfiltered,tundras_unfiltered,
+#                                     croplands_unfiltered)
+
+
+
+
+#now break up by seasons of each measurement to get more precision
+isotope <- read.csv('./../../../Data/Isotopes/isotope_data.csv')
+head(isotope)
+isotope <- subset(isotope,Drop.=='No')
+
+unique(isotope$season)
+
+# annual scale
+
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
+#barren_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_barren_unfiltered.tif')
+#plot(global_unfilitered)
+
+global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                    shrublands_unfiltered,tundras_unfiltered,
+                                    croplands_unfiltered)
+
+#list to store outputs
+df_list_annual <- list()
+
+#check this point
+coord.check <- isotope[12,]
+coord.check <- cbind(coord.check[4],coord.check[3])
+raster::extract(global_unfilitered,coord.check,weights=TRUE,fun=mean,na.rm=T)
+plot(global_unfilitered)
+points(coord.check)
+
+
+for(i in 1:nrow(isotope)){
+  
+  df <- isotope[i,]
+  
+  land_cover <- unique(df$Land.cover.type)
+  
+  coord <- cbind(df[4],df[3]) #get coordinate
+  
+  transit.isotope <- df[7]
+
+  value <- raster::extract(global_unfilitered,coord)
+    
+
+  
+  df.2 <- data.frame(coord)
+  df.2$transit.vod <- value
+  df.2$transit.isotope <- as.numeric(transit.isotope)
+  df.2$cover <- land_cover
+  
+  df_list_annual[[i]] <-df.2
+  
+  
+}
+
+transit.df.annual.2 <- data.frame(do.call('rbind',df_list_annual))
+transit.df.annual.2 <-na.omit(transit.df.annual.2)
+plot(transit.vod~transit.isotope,data=transit.df.annual.2)
+abline(a=0,b=1)
+?abline
+cor(transit.df.annual.2$transit.vod,transit.df.annual.2$transit.isotope)
+
+#plot and save to file
+vwc_isotope_plot <- ggplot(transit.df.annual.2,
+                       aes(transit.isotope,transit.vod,fill=cover)) +
+  geom_point(size=5,pch=21) +
+  scale_fill_manual(values=c('Forest'='black','Shrublands'='white')) +
+  #geom_smooth(method='lm',linetype='dashed') +
+  annotate("text", x=6.5, y=5.8, label= "1:1 Line") +
+  geom_abline(slope=1) +
+  #geom_text(aes(label=x),hjust=0,vjust=0) +
+  ylab('VOD-based transit time (days)') +
+  xlab('Isotope-based transit time (days)') +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=19),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=14),
+    legend.position = c(0.6,0.15),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
+
+png(height = 2000,width=2500,res=300,'Figures/october_2021/VOD_Isotope_TT_Comparison_2.png')
+vwc_isotope_plot  
+dev.off()
+
+
+
+
+
+#check point
+plot(Spring_global)
+plot(global_unfilitered)
+
+
+#do it by seasons 
+
+season_list <- c('winter','spring','summer','fall')
+ecoregion_list <- c('grassland','cropland','forest','shrubland','tundra')
+winter_list = list()
+spring_list = list()
+summer_list = list()
+fall_list = list()
+
+for(i in ecoregion_list){
+  
+  #winter
+  winter_raster <- raster(paste0('./../../../Data/Derived_Data/VWC/Seasonal/winter_storage_vwc_',i,'_unfiltered.tif'))
+  winter_list[[i]] <- winter_raster
+  
+  #spring
+  spring_raster <- raster(paste0('./../../../Data/Derived_Data/VWC/Seasonal/spring_storage_vwc_',i,'_unfiltered.tif'))
+  spring_list[[i]] <- spring_raster
+  
+  #summer
+  summer_raster <- raster(paste0('./../../../Data/Derived_Data/VWC/Seasonal/summer_storage_vwc_',i,'_unfiltered.tif'))
+  summer_list[[i]] <- summer_raster
+  
+  #fall
+  fall_raster <- raster(paste0('./../../../Data/Derived_Data/VWC/Seasonal/fall_storage_vwc_',i,'_unfiltered.tif'))
+  fall_list[[i]] <- fall_raster
+  
+  
+  
+}
+
+
+season_list <- c(winter_list,spring_list,summer_list,fall_list)
+season_list <- c('winter_list','spring_list')
+
+for(i in season_list){}
+  
+
+combine_land_cover <-  function(x){
+  
+  global_raster <- raster::merge(x$grassland,x$forest,x$cropland,x$shrubland,
+                                 x$tundra)
+  
+  return(global_raster)
+  
+}
+
+Winter_global <- combine_land_cover(winter_list)
+Spring_global <- combine_land_cover(spring_list)
+Summer_global <- combine_land_cover(summer_list)
+Fall_global <- combine_land_cover(fall_list)
+
+df_list = list()
+
+for(i in 1:nrow(isotope)){
+  
+  df <- isotope[i,]
+  
+  coord <- cbind(df[4],df[3]) #get coordinate
+  
+  transit.isotope <- df[7]
+  
+  season <- df$season
+  
+  if(season=='Winter'){
+    
+    value <- extract(Winter_global,coord,weights=TRUE,fun=mean)
+    
+  }else if(season=='Spring'){
+    
+    value <- extract(Spring_global,coord,weights=TRUE,fun=mean)
+    
+    
+  }else if(season=='Summer'){
+    
+    value <- extract(Summer_global,coord,weights=TRUE,fun=mean)
+    
+  }else if(season=='Fall'){
+    
+    value <- extract(Fall_global,coord,weights=TRUE,fun=mean)
+    
+    
+  }
+  
+
+
+  df.2 <- data.frame(coord)
+  df.2$transit.vod <- value
+  df.2$transit.isotope <- as.numeric(transit.isotope)
+  
+  df_list[[i]] <-df.2
+  
+  
+}
+
+transit.df.2 <- data.frame(do.call('rbind',df_list))
+na.omit(transit.df.2)
+
+plot(transit.vod~transit.isotope,data=na.omit(transit.df.2))
+
+transit.df.3 <- na.omit(transit.df.2)
+cor(transit.df.3$transit.vod,transit.df.3$transit.isotope)
+#0.79
+
+
+summary(lm(transit.vod~transit.isotope,data=transit.df.3))
+
+
+#compare storage and vod V 2 (looped) ------
+
+#load in VWC data
+vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+
+#load in ground estimates from literature
+ground_estimates <- read.csv('./../../../woodwater/Data/site_WC_estimates.csv')
+#head(ground_estimates)
+unique(ground_estimates$Land.Cover.Type)
+
+#use only cross-checked sites
+ground_estimates <- subset(ground_estimates,Exclude=='No')
+unique(ground_estimates$Exclude)
+
+#narrow down/rename columns
+ground_estimates <-ground_estimates[c('Land.Cover.Type', 'Lat','Long','mean.moisture')]
+colnames(ground_estimates) <- c('Land.Cover.Type','y','x','moisture.content')
+
+head(ground_estimates)
+
+
+#load in aboveground biomass data
+dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
+#get veg water in g/m^2:
+
+dry_biomass_only <- dry_biomass_only/10
+
+#1000000 grams = 1 megagram
+dry_biomass_only<-dry_biomass_only*1000000
+
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass_only<-dry_biomass_only/10000
+
+#turn into normally gridded raster
+ground_estimates <-ground_estimates[c(1,3,2,4)]
+ground_estimates <- na.exclude(ground_estimates)
+
+df.storage.list = list()
+for(i in 1:nrow(ground_estimates)){
+
+df <- ground_estimates[i,]
+cover <- df$Land.Cover.Type
+
+coord <- cbind(df[2],df[3]) #get coordinate
+
+moisture.content <- as.numeric(df[4])
+
+
+agb <- extract(dry_biomass_only,coord)
+
+storage.ground <- (agb*moisture.content)*.001
+
+df.2 <- data.frame(coord)
+df.2$vwc.ground <- storage.ground
+df.2$cover <- as.factor(cover)
+
+df.storage.list[[i]] <- df.2
+
+
+}
+
+df.storage <- do.call('rbind',df.storage.list)
+
+
+vod_vwc <- list() 
+for(i in 1:nrow(df.storage)){
+  
+  
+  df <- df.storage[i,]
+  cover <- df$cover
+  vwc.ground <- as.numeric(df$vwc.ground)
+  
+  coord <- cbind(df[1],df[2]) 
+  
+  
+  vod.vwc <- extract(vwc_from_vod,coord)
+  
+  vod.vwc.df <- data.frame(coord)
+  vod.vwc.df$vod.vwc <- as.numeric(vod.vwc)
+  vod.vwc.df$vwc.ground <- as.numeric(vwc.ground)
+  vod.vwc.df$cover <- cover
+  
+  vod_vwc[[i]] <- vod.vwc.df
+  
+  
+}
+
+vod_vwc_df <- do.call('rbind',vod_vwc)
+
+vod_vwc_df <- na.exclude(vod_vwc_df)
+plot(vod.vwc~vwc.ground,data=vod_vwc_df)
+cor(vod_vwc_df$vod.vwc,vod_vwc_df$vwc.ground)
+#0.7
+
+#try to plot it out
+vwc_vod_plot <- ggplot(vod_vwc_df,
+                       aes(vwc.ground,vod.vwc,fill=cover)) +
+  geom_point(size=5,pch=21) +
+  scale_fill_manual(values=c('Grassland'='blue','Forest'='white',
+                             'Tundra'='grey','Shrubland'='green')) +
+  #geom_smooth(method='lm',linetype='dashed') +
+  annotate("text", x=9, y=8.3, label= "1:1 Line") +
+  geom_abline(slope=1) +
+  #geom_text(aes(label=x),hjust=0,vjust=0) +
+  ylab('VOD-based water storage (mm)') +
+  xlab('VWC-based water storage (mm)') +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=19),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=14),
+    legend.position = c(0.6,0.15),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
+
+png(height = 2000,width=2500,res=300,'Figures/october_2021/VOD_VWC_Storage_Comparison_2.png')
+vwc_vod_plot 
+dev.off()
+
+
+cor(vod_vwc_df$vod.vwc,vod_vwc_df$vwc.ground)
+summary(lm(vod.vwc~vwc.ground,data=vod_vwc_df))
+
+
+#look at how storage and T covary through time in temperate and tropical latitudes-----
+
+
+#step 1
+
+#line up monthly transp and storage data
+
+#this get you monthly estimates of storage:
+outfile <- './../../../Data/Derived_data/VWC/'
+#ecoregion_dir <- dir(outfile, full.names = T,pattern = "2016")
+ecoregion_dir <- dir(outfile, full.names = T)
+ecoregion_dir <- ecoregion_dir[-c(1,2,3,4,17)] #remove december 2016
+
+vwc.list<-list()
+for(j in ecoregion_dir[1:12]){
+  
+  
+  test<-fread(j)
+  test.vwc<-aggregate(vwc~x+y,mean,data=test)
+  test.vwc$month <- j
+  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2016_','',test.vwc$month)
+  test.vwc$month <- gsub('./../../../Data/Derived_data/VWC//vwc_2015_','',test.vwc$month)
+  test.vwc$month <- gsub('.csv','',test.vwc$month)
+  #test.vwc$month <- gsub('.csv','',test.vwc$month)
+  test.vwc$month <-as.numeric(as.character(test.vwc$month))
+  
+  vwc.list[[j]] <- test.vwc
+  
+  
+  
+}
+
+test.vwc<-do.call('rbind',vwc.list)
+rownames(test.vwc) = NULL
+# head(test.vwc)
+# unique(test.vwc$month)
+#str(test.vwc)
+
+#this will get you to a dataframe of monthly estimates of turnover, storage, and T.
+
+#get monthly transpiration for forests
+forest_minimum <- import_monthly_transp_2('Forest')
+ecoregion = 'forest'
+transp.stack = forest_minimum
+
+#for grasslands
+# grassland_minimum <- import_monthly_transp_2('Grassland')
+# ecoregion = 'grassland'
+# transp.stack = grassland_minimum
+
+months<- c('january','february','march','april','may','june','july','august',
+           'september','october','november','december')
+
+months.list<-list()
+
+for(i in months){
+  
+  test_turnover_function<-get_monthly_turnover_2(i)
+  
+  test_turnover_function$month <- i
+  
+  months.list[[i]] <- test_turnover_function
+  
+  
+}
+
+monthly.df <- do.call('rbind',months.list)
+head(monthly.df)
+
+monthly.df.no.inf <- monthly.df %>%
+  filter(!turnover_days == 'Inf')
+
+#filter to just temperate forests
+temperate <-  monthly.df %>%
+  filter(y > 25) %>%
+  filter(y < 50)
+
+#filter to the tropics
+tropics <-  monthly.df %>%
+  filter(y > -23) %>%
+  filter(y < 23)
+
+
+#take a look
+plot(rasterFromXYZ(tropics[c(1,2,3)]))
+
+month.coef.list<- list()
+summary.list <- list()
+
+#get spatial slopes for each month
+for( i in months){
+  
+  northern.hem.subset <- subset(tropics,month==i)
+  summary <- summary(lm(canopy_transpiration_mm_m2~storage_mm,data=northern.hem.subset))
+  coef <- coef(lm(canopy_transpiration_mm_m2~storage_mm,data=northern.hem.subset))[2]
+  coef <- data.frame(coef)
+  coef$month <- i
+  
+  month.coef.list[[i]] <- coef
+  summary.list[[i]] <- summary
+  
+  
+}
 
 #convert to dataframe
-grasslands_turnover_df <- data.frame(rasterToPoints(grasslands_turnover))
-colnames(grasslands_turnover_df) <- c('x','y','turnover')
-#head(grasslands_turnover_df)
+month.coef.list.df <- do.call('rbind',month.coef.list)
 
-#turncate right (top 5%)
-high<-round(quantile(grasslands_turnover_df$turnover,
-               probs=0.95),2)
+#I don't actually know what this tells us. But lets us this to convert months to numbers:
+month.coef.list.df$month.2 <- seq.int(nrow(month.coef.list.df))
+str(month.coef.list.df)
 
-grasslands_turnover_df_truncate <- grasslands_turnover_df %>%
-  dplyr::filter(turnover < high)
-grasslands_turnover_df_truncate$cover <- land_cover
+#merge this with original dataframe so months are numeric
+temperate.2 <- merge(tropics,month.coef.list.df[c(2,3)],by='month')
+temperate.2$canopy_transpiration_mm_m2_2 <- temperate.2$canopy_transpiration_mm_m2*30.5
+plot(canopy_transpiration_mm_m2_2~month.2,data=temperate.2)
+points(storage_mm~month.2,data=temperate.2,col='red')
 
-return(grasslands_turnover_df_truncate)
-
-}
-
-#annual turnover
-land_covers <-c('grassland','forest','tundra','croplands','shrubland')
-truncate_list <- list()
-
-for(i in land_covers){
-  
-  truncate_list[[i]]<-get_turncated_dist(i,annual=T)
-  
-}
-
-png('Figures/annualized_transit_ecdfs.png',
-    width=2500,height=2000,res=300)
-
-plot(ecdf(data.frame(truncate_list[1])$grassland.turnover),
-     xlab='Annualized transit time (days)',
-     ylab='Probability density',main='',xlim=c(0,60))
-plot(ecdf(data.frame(truncate_list[2])$forest.turnover),add=TRUE,col='red')
-plot(ecdf(data.frame(truncate_list[3])$tundra.turnover),add=TRUE,col='grey')
-plot(ecdf(data.frame(truncate_list[5])$shrubland.turnover),add=TRUE,col='blue')
-plot(ecdf(data.frame(truncate_list[4])$croplands.turnover),add=TRUE,col='green')
-abline(a=0.5,b=0,lty='dashed',col='grey',lwd=1)
-legend(15, 0.30, legend=c("Grasslands","Forests","Tundras","Shrublands","Croplands"),     
-       col=c("black", "red",'grey','blue',"green"), lty=1.0,lwd=5,cex=1.1,box.lty=0)
-
-dev.off()
-
-#annual turnover (notice now the names are plural because of filepath)
-
-land_covers_minimum <-c('grasslands','forests','tundras','croplands','shrublands')
-truncate_list_minimum <- list()
-
-for(i in land_covers_minimum){
-  
-  truncate_list_minimum[[i]]<-get_turncated_dist(i,annual=F)
-  
-}
+forest<- ggplot(temperate.2,aes(month.2,canopy_transpiration_mm_m2_2)) +
+  stat_summary(fun = 'mean',geom='point') +
+  stat_summary(fun = 'mean',geom='line') +
+  stat_summary(aes(month.2,storage_mm),
+               fun='mean',col='red') +
+  stat_summary(aes(month.2,storage_mm),
+               fun='mean',col='red',geom='line')
 
 
 
-
-png('Figures/minimum_transit_ecdfs.png',
-    width=2500,height=2000,res=300)
-
-plot(ecdf(data.frame(truncate_list_minimum[1])$grasslands.turnover),xlab='Minimum transit time (days)',
-     ylab='Probability density',main='',xlim=c(0,8)) #xlim=c(0,60)
-plot(ecdf(data.frame(truncate_list_minimum[2])$forests.turnover),add=TRUE,col='red')
-plot(ecdf(data.frame(truncate_list_minimum[3])$tundras.turnover),add=TRUE,col='grey')
-plot(ecdf(data.frame(truncate_list_minimum[5])$shrublands.turnover),add=TRUE,col='blue')
-plot(ecdf(data.frame(truncate_list_minimum[4])$croplands.turnover),add=TRUE,col='green')
-abline(a=0.5,b=0,lty='dashed',col='grey',lwd=1)
-legend(4, 0.3, legend=c("Grasslands","Forests","Tundras","Shrublands","Croplands"),     
-       col=c("black", "red",'grey','blue',"green"), lty=1.0,lwd=5,cex=1.1,box.lty=0)
-
-dev.off()
-
-
-#filter uncertainty by truncated dist-------
-global_error_raster <- raster('./../../../Data/Derived_Data/Uncertainty/quadrature/VWC_global_quadrature_rel.tif')
-
-hist(global_error_raster$VWC_global_quadrature_rel)
-summary(global_error_raster)
-
-rbind_annual_truncated <- do.call("rbind",truncate_list)
-head(rbind_annual_truncated)
-dim(rbind_annual_truncated)
-rbind_annual_truncated<-rasterFromXYZ(rbind_annual_truncated[c(1,2,3)])
-
-land_covers <-c('grassland','forest','tundra','croplands','shrubland')
-trun.annual.list<-list()
-
-for(i in land_covers){
-
-test.trunc <- get_turncated_dist(i,annual=T)
-test.trunc <- rasterFromXYZ(test.trunc[c(1,2,3)])
-crs(test.trunc) <- '+proj=longlat +datum=WGS84'
-
-trun.annual.list[[i]] <- test.trunc
-
-}
-
-global_truncated<-
-  raster::merge(trun.annual.list[1]$grassland,trun.annual.list[2]$forest,
-                trun.annual.list[3]$tundra,trun.annual.list[4]$croplands,
-                trun.annual.list[5]$shrubland)
-plot(global_truncated)
-sd(global_error_truncated$VWC_global_quadrature_rel)
-
-global_error_truncated <- mask(global_error_raster,global_truncated)
-plot(global_error_truncated)
-summary(global_error_truncated)
-hist(global_error_truncated$VWC_global_quadrature_rel)
-
-library("rnaturalearth")
-library("rnaturalearthdata")
-library(ggplot2)
-global_error_truncated_df <- rasterToPoints(global_error_truncated)
-world <- ne_countries(scale = "medium", returnclass = "sf")
-ggplot(data = world) + geom_sf() + 
-  geom_point(data= data.frame(global_error_truncated_df),aes(x=x, y=y, color = VWC_global_quadrature_rel),size=0.1) +
-  scale_color_gradient2(midpoint = 0.58, low = "blue", mid = "white",
-                        high = "red", space = "Lab" )
-
-plot(test.trunc)
-head(test.trunc)
-
-#old------
-#look at ecdf
-hist(grasslands_turnover_df_truncate$turnover)
-plot(ecdf(grasslands_turnover_df_truncate$turnover))
-summary(grasslands_turnover_df_truncate)
-
-mean_turnover<-mean(grasslands_turnover_df_truncate$annual_transit_vwc_grassland_unfiltered)
-sd_turnover<-sd(grasslands_turnover_df_truncate$annual_transit_vwc_grassland_unfiltered)
-toy.df<-rnorm(10000,mean=mean_turnover,sd_turnover)
-y<-dnorm(toy.df,mean=mean_turnover,sd_turnover)
-plot(toy.df,y)
-
-library(truncnorm)
-test=dtruncnorm(toy.df,a=0,b=high,mean=mean_turnover,sd=sd_turnover)
-plot(test)
-
-#y <- dnorm(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
-summary(y)
-new <- dtrunc(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered,
-              spec="norm", a=0, b=high)
-summary(new)
-plot(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered, 
-     new, xlab = "x", ylab = "PDF",xlim=c(0,high))
-  
-plot(new)
-
-
-#get normal distribution of PPT
-mean_ppt<-mean(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
-sd_ppt <- sd(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
-toy.df<-rnorm(10000,mean=mean_ppt,sd_ppt)
-summary(toy.df)
-y<-dnorm(toy.df,mean=mean_ppt,sd_ppt)
-plot(toy.df,y)
-
-
-#from the paper
-
-x <- seq(-3, 3, by = 0.1)
-y1 <- dnorm(x)
-y2 <- dtrunc(x, "norm", a = -0.5, b = 0.5, mean = 0, sd = 2)
-R> y3 <- dtrunc(x, "norm", a = -1, b = 1, mean = 0, sd = 2)
-R> y4 <- dtrunc(x, "norm", a = -2, b = 2, mean = 0, sd = 2)
-yrange <- range(y1, y2, y3, y4)
-plot(x, y1, type = "l", xlab = "x", ylab = "PDF", xlim = c(-3,
-                                                              + 3))
-R> lines(x, y2, lty = 2)
-R> lines(x, y3, lty = 3)
-R> lines(x, y4, lty = 4)
-
-#try to mimic this
-
-
-
-cdf <- ecdf(grasslands_turnover_df$annual_transit_vwc_grassland_unfiltered)
-plot(cdf)
-
-
-
-
-#-------
-
-
-#make a plot with land cover types colored and add the points where have data
-# for wood water content 
-
-#make some plot of (minimum) transit time with:
-
-# MAT, MAP, aridity, soil moisture
 
