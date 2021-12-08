@@ -116,48 +116,6 @@ load_et_by_filepath<-function(x,process){
 
 
 #-----------------------------------------------
-# ET figure function (NEEDS WORK) --------
-
-# Update projection
-
-# need to check this so it can be used mroe broadly
-
-plot_et <- function(x,y,title,range.x){
-  
-  #aea.proj <- "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=37.5 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
-  #x <- spTransform(x, CRS(aea.proj))
-  
-  et= c("red", "orange", "yellow",'green','cyan3','purple')
-  bks_et<- quantile(x$y, probs=seq(0, 1, by=0.05), na.rm = TRUE)
-  bkcols.et <- colorRampPalette(et)(length(bks_et)-1)
-  #proj4string(x)<-CRS(aea.proj)
-  r.range <- round(c(minValue(x), maxValue(x)))
-  
-  # Update projection
-  #proj4string(x) <- CRS("+proj=longlat")
-  #x<-projectRaster(x, crs=aea.proj)
-  #plot(mean_mm_raster_2)
-  
-  
-  # png(file='./../../../Figures/preliminary/my_first_figure.png',
-  #     width=1500,height=1200,res=150)
-  
-  # Plot it
-  plot(x,breaks = bks_et,axes=F,box=F,col = bkcols.et,
-       legend.width=0.80,legend.shrink=1,main=title,cex.main=0.75,
-       axis.args=list(at=seq(r.range[1], r.range[2], range.x),
-                      labels=seq(r.range[1], r.range[2], range.x),
-                      cex.axis=0.75),
-       legend.args=list(expression(paste('')), side=4, font=2,adj=0.5, line=2.5, cex=0.9))
-  
-  #dev.off()
-  
-  
-  #return()
-  
-} 
-
-#-----------------------------------------------
 # calculate data range (maximum minus minimum) ------
 
 min_max <- function(x){
@@ -182,7 +140,7 @@ get_region_biomass<-function(region){
 
 
 #-----------------------------------------------
-# fix grid  ------
+# EASE to regular grid  ------
 
 #Get the EASE grid to a regular grid. outputs a raster
 #do this after converting to a dataframe 
@@ -232,10 +190,7 @@ biome_resample<-function(region_shapefile,region_raster,et_raster){
   
   transp.region<-crop(et_raster,extent(region_shapefile)) 
   transp.region<-mask(transp.region,region_shapefile)
-  #plot(transp.mexico)
   resample_test<-resample(transp.region,region_raster)
-  #resample_test<-mask(resample_test,region_shapefile)
-  #plot(resample_test) #works
   
   #turn into dataframe
   resample_test<-(rasterToPoints(resample_test))
@@ -285,28 +240,6 @@ le_to_cumulative_monthly_mm<-function(x){
   ET_mm = (LE_Wm2*(m_2_mm*s_2_mon)/(lambda_e*roe_w))
   
   return(ET_mm)
-  
-}
-#------------------------------------------------
-# Plot maps of water turnover (NEEDS WORK)--------
-
-plot_turnover<-function(x,y,title,range.x){
-  
-  et= c("lightblue","red")
-  #et= c("red", "orange", "yellow",'green','cyan3','purple')
-  bks_et<- quantile(x, probs=seq(0.05, .95, by=0.1), na.rm = TRUE)
-  bkcols.et <- colorRampPalette(et)(length(bks_et)-1)
-  #proj4string(x)<-CRS(aea.proj)
-  r.range <- round(c(minValue(x), maxValue(x)))
-  
-  # Plot it
-  plot(x,breaks = bks_et,axes=F,box=F,col = bkcols.et,
-       legend.width=0.80,legend.shrink=1,main=title,cex.main=0.75,
-       axis.args=list(at=seq(r.range[1], r.range[2], range.x),
-                      labels=seq(r.range[1], r.range[2], range.x),
-                      cex.axis=0.75),
-       legend.args=list(expression(paste('')), side=4, font=2,adj=0.5, line=2.5, cex=0.9))
-  
   
 }
 #------------------------------------------------
@@ -590,25 +523,6 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
 
 
 #------------------------------------------------
-# color bar (NEEDS WORK) -----
-
-# function for color bar legend in maps
-color.bar <- function(lut, min, max=-min, nticks=11, ticks=seq(min, max, len=nticks), ticLABS=NULL,title='') {
-  scale = (length(lut))
-  ifelse(is.null(ticLABS), ticLABELS <- prettyNum(signif(ticks, 4)), ticLABELS <- ticLABS) 
-  
-  #dev.new(width=1.75, height=5)
-  plot(c(0,1), c(0,1), type='n', bty='n', xaxt='n', xlab='', yaxt='n', ylab='', main=title)
-  #axis(2, ticks, las=1)
-  axis(2, at=seq(0, 1, len=nticks), labels=ticLABELS, las=2)
-  
-  for (i in 1:(length(lut))) {
-    y = (i-1)/scale #+ min
-    rect(0,y,10,y+1/scale, col=lut[i], border=NA)
-  }
-}
-
-#------------------------------------------------
 # coefficient of variation ----
 
 cv <- function(x){
@@ -619,7 +533,7 @@ cv <- function(x){
 }
 
 #------------------------------------------------
-#get 2016 annual turnover data -----
+# get 2016 annual turnover data -----
 
 #estimates the turnover time for 2016 by water storage by 
 # dividing cumulative annual canopy transpiration 
@@ -786,7 +700,7 @@ get_2016_CV_turnover<-function(vegetation){
   
 }
 #------------------------------------------------
-# Get seasonal turnover ----
+# Get seasonal turnover (X2 CHECK IF USED) ----
 
 
 get_seasonal_turnover <- function(test){
@@ -1036,33 +950,6 @@ get_vwc <-function(x,y,filepath){
 }
 
 #------------------------------------------------
-# create a probability density distribution for the turnover dataframe (might delete) ----
-
-
-get_pdf_df <- function(df){
-  
-  toy.df<-rnorm(10000,mean=mean(df$new),
-                sd=sd(df$new))
-  y<-dnorm(toy.df,mean=mean(df$new),
-           sd=sd(df$new))
-  
-  
-  #make df to later merge
-  y.df<-as.data.frame(y)
-  y.df$id <- rownames(y.df)
-  
-  toy.df.df <- as.data.frame(toy.df)
-  toy.df.df$id <- rownames(toy.df.df)
-  
-  merge.y.toy <- merge(toy.df.df,y.df,by=c('id'))
-  merge.y.toy.ordered <- merge.y.toy %>%
-    dplyr::arrange(toy.df)
-  
-  return(merge.y.toy.ordered)
-  
-}
-
-#------------------------------------------------
 # Filter out extreme values for turnover for script (08) based on tails (CHECK) -----
 
 
@@ -1261,7 +1148,7 @@ get_seasonal_turnover_VWC <- function(season,land_cover){
   
 }
 #------------------------------------------------
-# Filter out extreme values for turnover for script (08) based on IQR outliers (CHECK) -----
+# Filter out extreme values for turnover for script (08) based on IQR outliers (X2 CHECK IF USED) -----
 
 
 filter_extremes_turnover_IQR<-function(df){
@@ -1533,7 +1420,7 @@ get_monthly_turnover_VWC <- function(month,land_cover){
   
 }
 #------------------------------------------------
-#95% confidence interval-----
+# 95% confidence interval (X2 CHECK IF USED)-----
 
 error.95 <-function(x) {
   n = length(x)
@@ -1543,7 +1430,7 @@ error.95 <-function(x) {
   return(error)
 }
 #------------------------------------------------
-# get monthly VWC-based estimates of storage ------
+# get monthly VWC-based estimates of storage (X2 IF USED) ------
 
 get_monthly_storage_VWC <- function(month,land_cover){
   
@@ -1698,18 +1585,22 @@ get_monthly_storage_VWC <- function(month,land_cover){
 
 #------------------------------------------------
 # go from mm/m^2 to cubic km ----
-get_km_cubed <- function(x){
+
+
+get_km_cubed_3 <- function(x){
   
-  x <- x/10 # get meters/m^2
-  x <- x*9e+6 # get m/m^2 in an entire pixel. This is cubic m
-  x <- x*1e-9 # get cubic km
+  x <- x/1000 #convert mm/m^2 to m/m^2
+  x <- x*(9200^2) #convert to cubic m (multiply by length and width of each pixel: 9 by 9 km)
+  x <- x*1e-9 # multiply by this value to get cubic km from cubic m.
   
   
   return(x)
   
 }
+
+
 #------------------------------------------------
-# error propogations ------
+# error propagation ------
 
 stderr <- function(x, na.rm=FALSE) {
   if (na.rm) x <- na.omit(x)
@@ -1783,7 +1674,7 @@ error_prop_division <- function(dataset){
   
 }
 #------------------------------------------------
-# create truncated distribution for each land voer type ----
+# create truncated distribution for each land cover type (X2 check if used) ----
 
 get_turncated_dist <- function(land_cover,annual=T){
   
@@ -1821,7 +1712,7 @@ get_turncated_dist <- function(land_cover,annual=T){
 }
 
 #------------------------------------------------
-# Transit uncertainty by comparing minimum And maximum bounds for each pixel-----
+# Transit uncertainty by comparing minimum and maximum bounds for each pixel-----
 
 #uncertainty max numerator min denominator:
 transit_uncert_max <- function(x){
@@ -1899,7 +1790,8 @@ raster_from_nc_expand_grid <- function(file,variable){
 }
 
 #------------------------------------------------
-#get slopes of climate effects on transit time for different land cover types----
+# get slopes of climate effects on transit time for different land cover types----
+
 get_climate_model_coefs <- function(list,x,veg){
   
   list_coef <- list()
@@ -1952,7 +1844,7 @@ get_climate_model_coefs <- function(list,x,veg){
 }
 
 #------------------------------------------------
-#function to generate monthly transp data by land cover type (maybe DELETE) -----
+# function to generate monthly transp data by land cover type (X2 CHECK IF USED) -----
 
 
 get_land_cover_transp<-function(region,x){
@@ -2051,6 +1943,7 @@ get_land_cover_transp<-function(region,x){
 }
 
 
+#------------------------------------------------
 # import and produce cumulative transpiration raster ------
 
 
@@ -2089,7 +1982,7 @@ import_cumulative_transp = function(x){
 
 
 #------------------------------------------------
-#Import and produce seasonal estimates of storage and turnover -----
+# Import and produce seasonal estimates of storage and turnover (X2 CHECK IF USED) -----
 
 
 import_monthly_transp <- function(x){
@@ -2148,7 +2041,7 @@ import_monthly_transp <- function(x){
 }
 
 #------------------------------------------------
-#-------- version 2 of getting seasonal storage and turnover -----
+# version 2 of getting seasonal storage and turnover -----
 
 get_seasonal_turnover_2 <- function(season){
   
@@ -2398,8 +2291,7 @@ get_monthly_turnover_2 <- function(month){
 }
 
 #------------------------------------------------
-#revamped script to generate monthly transp rasters for each land cover -----
-ecoregion='tundra'
+# revamped script to generate monthly transp rasters for each land cover -----
 
 get_land_cover_transp_2<-function(ecoregion,x){
   
@@ -2453,6 +2345,7 @@ get_land_cover_transp_2<-function(ecoregion,x){
 
 #------------------------------------------------
 # truncate to help with mapping with long tails ------
+
 truncate_for_mapping <- function(df,col_number){
   
   # df <- var_df
@@ -2483,3 +2376,8 @@ truncate_for_mapping <- function(df,col_number){
   return(var_df_2)
   
 }
+
+#------------------------------------------------
+
+
+

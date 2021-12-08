@@ -113,9 +113,17 @@ dev.off()
 dry_biomass_cubed <- get_km_cubed(dry_biomass)
 plot(dry_biomass)
 
-vwc_from_vod_cubed <- get_km_cubed(vwc_from_vod)
-plot(vwc_from_vod)
+#load vod-based storage data (mm/m^2 of water)
+vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+#plot(vwc_from_vod)
+vwc_from_vod_cubed <- get_km_cubed_3(vwc_from_vod)
 
+vwc_from_vod_cubed_df <- data.frame(rasterToPoints(vwc_from_vod_cubed))
+sum(vwc_from_vod_cubed_df$annual_storage_vwc_global_unfiltered)
+#612.54
+
+
+#3000^2
 #convert to df to add up
 dry_biomass_cubed_df <- data.frame(rasterToPoints(dry_biomass_cubed))
 vwc_from_vod_cubed_df <- data.frame(rasterToPoints(vwc_from_vod_cubed))
@@ -125,7 +133,7 @@ sum(dry_biomass_cubed_df$aboveground_dry_biomass_density_aggregate_30X)
 #8000.837 when we assuming water is 50% fresh mass
 # 5601.304 when we assuming water is 41% fresh mass
 
-sum(vwc_from_vod_cubed_df$layer)
+sum(vwc_from_vod_cubed_df$annual_storage_vwc_global_unfiltered)
 #6420.823
 
 #compare total values (for same pixel representation)
@@ -261,6 +269,7 @@ ground_estimates_forest_df <- ground_estimates_forest_df[c(1,2,5)]
 
 #import VOD-> VWC raster and turn into data frame (repeated code)
 vwc_from_vod <- raster( './../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_global_unfiltered.tif')
+plot(vwc_from_vod )
 
 #reample this to the empirical dataset
 vwc_from_vod <- resample(vwc_from_vod,ground_estimates_forest)
@@ -1039,24 +1048,24 @@ cor(transit.df.annual.2$transit.vod,transit.df.annual.2$transit.isotope)
 #plot and save to file
 vwc_isotope_plot <- ggplot(transit.df.annual.2,
                        aes(transit.isotope,transit.vod,fill=cover)) +
-  geom_point(size=5,pch=21) +
+  geom_point(size=2,pch=21) +
   scale_fill_manual(values=c('Forest'='black','Shrublands'='white')) +
   #geom_smooth(method='lm',linetype='dashed') +
-  annotate("text", x=6.5, y=5.8, label= "1:1 Line") +
+  annotate("text", x=7.6, y=5.8, label= "1:1 Line",size=3) +
   geom_abline(slope=1) +
   #geom_text(aes(label=x),hjust=0,vjust=0) +
-  ylab('VOD-based transit time (days)') +
+  ylab('Satellite-based transit time (days)') +
   xlab('Isotope-based transit time (days)') +
   theme(
-    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
-    axis.text.y = element_text(color='black',size=13),
-    axis.title.x = element_text(color='black',size=19),
-    axis.title.y = element_text(color='black',size=19),
+    axis.text.x = element_text(color='black',size=5), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=5),
+    axis.title.x = element_text(color='black',size=6),
+    axis.title.y = element_text(color='black',size=6),
     axis.ticks = element_line(color='black'),
     legend.key = element_blank(),
     legend.title = element_blank(),
-    legend.text = element_text(size=14),
-    legend.position = c(0.6,0.15),
+    legend.text = element_text(size=5),
+    legend.position = c(0.7,0.3),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
     #legend.position = 'none',
     strip.background =element_rect(fill="white"),
@@ -1289,7 +1298,7 @@ vwc_vod_plot <- ggplot(vod_vwc_df,
   scale_fill_manual(values=c('Grassland'='blue','Forest'='white',
                              'Tundra'='grey','Shrubland'='green')) +
   #geom_smooth(method='lm',linetype='dashed') +
-  annotate("text", x=9, y=8.3, label= "1:1 Line") +
+  annotate("text", x=7, y=6.3, label= "1:1 Line") +
   geom_abline(slope=1) +
   #geom_text(aes(label=x),hjust=0,vjust=0) +
   ylab('VOD-based water storage (mm)') +

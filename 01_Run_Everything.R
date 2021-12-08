@@ -1,8 +1,6 @@
-# run all scripts from source
-#f
-#current PAT:
 
 
+#clear work environment and set up libraries and functions
 rm(list=ls())
 
 #load packages

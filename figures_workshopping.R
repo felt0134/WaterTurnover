@@ -282,31 +282,34 @@ png(height = 2000,width=3000,res=300,'Figures/october_2021/Figure_3_seasonal_tra
 # dev.off()
 
 #-------------------------------------------------------------------------------
-# storage figure 1 with vod-vwc and pools panels ------
+# transit figure 2 with vod-vwc and pools panels ------
   
   
-  #mean annual storage (A)
+  #https://rdrr.io/cran/scico/man/ggplot2-scales.html
   
-  #load in annual storage
-  grasslands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_grassland_unfiltered.tif')
-  forests_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_forest_unfiltered.tif')
-  shrublands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_shrubland_unfiltered.tif')
-  tundras_unfiltered_storge<- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_tundra_unfiltered.tif')
-  croplands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_cropland_unfiltered.tif')
+  #annual transit map (A)
+  grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+  forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+  shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+  tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+  croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
   
+  global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                      shrublands_unfiltered,tundras_unfiltered,
+                                      croplands_unfiltered)
   
-  storage = raster::merge(grasslands_unfiltered_storge,forests_unfiltered_storge,
-                          shrublands_unfiltered_storge,tundras_unfiltered_storge,
-                          croplands_unfiltered_storge)
+  #filter out zeros and truncate by 95th quantile
+  annual_transit <- data.frame(rasterToPoints(global_unfilitered)) %>%
+    filter(layer > 0)
   
-  plot(storage)
+  annual_transit <- data.frame(rasterToPoints(global_unfilitered))
+  annual_transit <- truncate_for_mapping(annual_transit,3)
+  #head(annual_transit)
   
-  storage_df <- data.frame(rasterToPoints(storage))
-  head(storage_df)
-  
-  storage_1 <- ggplot(storage_df, aes(x = x, y = y, fill = layer)) + 
-    geom_raster() + 
-    scale_fill_scico('Aboveground water storage (mm)',palette = 'batlow',direction=-1) +
+  # Annual transit time map (A)
+  transit_1 <- ggplot(annual_transit, aes(x = x, y = y, fill = value)) + 
+    geom_tile() + 
+    scale_fill_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
     xlab('') +
     ylab('') +
     theme(
@@ -330,19 +333,295 @@ png(height = 2000,width=3000,res=300,'Figures/october_2021/Figure_3_seasonal_tra
       axis.line.y = element_blank())
   
   
-  #add with bivariate VOD VWC relationship
-  #https://wilkelab.org/cowplot/articles/plot_grid.html
+  #latitude and annual transit time 
   
-  plots <- align_plots(storage_1, vwc_vod_plot, align = 'v', axis = 'l')
-  # then build the bottom row
-  bottom_row <- plot_grid(plots[[2]], vwc_vod_plot, labels = c('B', 'C'), label_size = 15)
+  #average by latitude
+  lat <- aggregate(value~y,mean,data=annual_transit)
+  #head(lat)
+  
+  transit_lat <- ggplot(lat,aes(value,y)) +
+    geom_point(size=1) +
+    xlab('Annual transit time (days)') +
+    ylab('Latitude (degrees)') +
+    geom_hline(yintercept = 0) +
+    theme(
+      axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+      axis.text.y = element_text(color='black',size=10),
+      axis.title.x = element_text(color='black',size=12),
+      axis.title.y = element_text(color='black',size=12),
+      axis.ticks = element_line(color='black'),
+      legend.key = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size=14),
+      legend.position = c(0.6,0.25),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = 'none',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_line(colour = "black"),
+      axis.line.y = element_line(colour = "black"))
   
   
-  png(height = 3500,width=4500,res=300,'Figures/october_2021/Figure_1_Storage_V2.png')
+  #annual transit by land cover type 
+  unfiltered_data <- c(grasslands_unfiltered,forests_unfiltered,shrublands_unfiltered,
+                       tundras_unfiltered,croplands_unfiltered)
+  annual_unfiltered_list_95<-list()
   
-  # then combine with the top row for final plot
-  plot_grid(plots[[1]], bottom_row, labels = c('A', ''), label_size = 12, ncol = 1)
+  for(i in unfiltered_data){
+    
+    unfiltered_df<-as.data.frame(rasterToPoints(i))
+    #head(unfiltered_df)
+    colnames(unfiltered_df) <- c('x','y','transit')
+    
+    quantile_transit_95 <- quantile(unfiltered_df$transit,prob=0.95)
+    
+    filtered_df = unfiltered_df %>%
+      dplyr::filter(transit < quantile_transit_95)
+    
+    filtered_df$land_cover <- names(i)
+    filtered_df$land_cover <- gsub("_unfiltered","",filtered_df$land_cover)
+    filtered_df$land_cover <- gsub("annual_transit_vwc_","",filtered_df$land_cover)
+    
+    annual_unfiltered_list_95[[names(i)]] <- data.frame(filtered_df)
+    
+  }
   
- dev.off()
+  annual_filtered_df <- do.call('rbind',annual_unfiltered_list_95)
+  #head(annual_filtered_df)
+  #aggregate(transit~land_cover,max,data=annual_filtered_df)
+  
+  boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit)) +
+    geom_violin(width=1.3) +
+    geom_boxplot(width=.1) +
+    ylab('Annual transit time (days)') +
+    xlab('') +
+    scale_x_discrete(labels=c("cropland" = "Cropland", "forest" = "Forest",
+                              "grassland" = "Grassland",'shrubland'='Shrubland',
+                              'tundra'='Tundra')) +
+    theme(
+      axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+      axis.text.y = element_text(color='black',size=10),
+      axis.title.x = element_text(color='black',size=12),
+      axis.title.y = element_text(color='black',size=12),
+      axis.ticks = element_line(color='black'),
+      legend.key = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size=12),
+      legend.position = c(0.75,0.70),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = 'none',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_line(colour = "black"),
+      axis.line.y = element_line(colour = "black"))
+  
+  
+  
+  #make the inset
+  
+  #try 1
+  # library(grid)
+  # vp <- viewport(width = 0.35, height = 0.35, x = 0.25,y=0.80)
+  # y = unit(0.7, "lines")
+  # just = c("right","bottom")
+  # #executing the inset, you create a function the utlizes all the previous code
+  # 
+  # full <- function() {
+  #   print(boxplot_annual_transit)
+  #   print(vwc_isotope_plot, vp = vp)
+  # }
+  # 
+  # boxplot_annual_transit_2 <- 
+  #   
+  #   print(boxplot_annual_transit)
+  # print(vwc_isotope_plot, vp = vp)
+  
+  
+  # 
+  # #try 2
+  library(cowplot)
+  plot.with.inset <-
+    ggdraw() +
+    draw_plot(boxplot_annual_transit) +
+    draw_plot(vwc_isotope_plot, x = .1, y = 0.60, width = .45, height = .40)
+  # 
+  # #try 3
+  # library(patchwork)
+  # boxplot_annual_transit +
+  #   inset_element(gg2, left = 0.65, bottom = 0.75, right = 1, top = 1)
+  # 
+  
+  
+  #minimum transit time 
+  
+  #load and combine land cover rasters
+  grasslands_minimum <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_grassland_minimum_transit.tif')
+  forests_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_forest_minimum_transit.tif')
+  shrublands_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_shrubland_minimum_transit.tif')
+  tundras_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_tundra_minimum_transit.tif')
+  croplands_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_cropland_minimum_transit.tif')
+  
+  global_minimum <- raster::merge(grasslands_minimum,forests_minimum,
+                                  shrublands_minimum,tundras_minimum,
+                                  croplands_minimum)
+  
+  #filter out zeros and truncate by 95th quantile
+  minimum_transit <- data.frame(rasterToPoints(global_minimum)) %>%
+    filter(layer > 0)
+  
+  minimum_transit <- truncate_for_mapping(minimum_transit,3)
+  #head(minimum_transit)
+  
+  # Minimum transit time map 
+  transit_2 <- ggplot(minimum_transit, aes(x = x, y = y, fill = value)) + 
+    geom_tile() + 
+    scale_fill_scico('Minimum transit time (days)',palette = 'batlow',direction=-1) +
+    xlab('') +
+    ylab('') +
+    theme(
+      axis.text.x = element_blank(), #angle=25,hjust=1),
+      axis.text.y = element_blank(),
+      axis.title.x = element_text(color='black',size=10),
+      axis.title.y = element_text(color='black',size=10),
+      axis.ticks = element_blank(),
+      legend.key = element_blank(),
+      #legend.title = element_blank(),
+      #legend.text = element_text(size=2),
+      #legend.position = c(0.7,0.1),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = c(0.12,0.3),
+      legend.position = 'top',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_blank(),
+      axis.line.y = element_blank())
+  
+  
+  #latitude and minimum transit time
+  
+  #average minimum transit by latitude
+  lat_2 <- aggregate(value~y,mean,data=minimum_transit)
+  
+  min_transit_lat <- ggplot(lat_2,aes(value,y)) +
+    geom_point(size=1) +
+    xlab('Minimum transit time (days)') +
+    ylab('Latitude (degrees)') +
+    geom_hline(yintercept = 0) +
+    theme(
+      axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+      axis.text.y = element_text(color='black',size=10),
+      axis.title.x = element_text(color='black',size=12),
+      axis.title.y = element_text(color='black',size=12),
+      axis.ticks = element_line(color='black'),
+      legend.key = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size=14),
+      legend.position = c(0.6,0.25),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = 'none',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_line(colour = "black"),
+      axis.line.y = element_line(colour = "black"))
+  
+  
+  #minimum transit by land cover type 
+  unfiltered_data <- c(grasslands_minimum,forests_minimum,shrublands_minimum,
+                       tundras_minimum,croplands_minimum)
+  min_unfiltered_list_95<-list()
+  
+  for(i in unfiltered_data){
+    
+    unfiltered_df<-as.data.frame(rasterToPoints(i))
+    #head(unfiltered_df)
+    colnames(unfiltered_df) <- c('x','y','transit')
+    
+    quantile_transit_95 <- quantile(unfiltered_df$transit,prob=0.95)
+    
+    filtered_df = unfiltered_df %>%
+      dplyr::filter(transit < quantile_transit_95) %>%
+      dplyr::filter(transit > 0) # remove any values below zero
+    
+    filtered_df$land_cover <- names(i)
+    filtered_df$land_cover <- gsub("VWC_","",filtered_df$land_cover)
+    filtered_df$land_cover <- gsub("_minimum_transit","",filtered_df$land_cover)
+    
+    min_unfiltered_list_95[[names(i)]] <- data.frame(filtered_df)
+    
+  }
+  
+  min_filtered_df <- do.call('rbind',min_unfiltered_list_95)
+  head(min_filtered_df)
+  aggregate(transit~land_cover,max,data=min_filtered_df)
+  
+  boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit)) +
+    geom_violin(width=1.2) +
+    geom_boxplot(width=.1) +
+    ylab('Minimum transit time (days)') +
+    xlab('') +
+    scale_x_discrete(labels=c("cropland" = "Cropland", "forest" = "Forest",
+                              "grassland" = "Grassland",'shrubland'='Shrubland',
+                              'tundra'='Tundra')) +
+    theme(
+      axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+      axis.text.y = element_text(color='black',size=10),
+      axis.title.x = element_text(color='black',size=12),
+      axis.title.y = element_text(color='black',size=12),
+      axis.ticks = element_line(color='black'),
+      legend.key = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size=12),
+      legend.position = c(0.75,0.70),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = 'none',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_line(colour = "black"),
+      axis.line.y = element_line(colour = "black"))
+  
+  
+  #create multipanel figure for manuscript
+  
+  png(height = 2500,width=4500,res=300,'Figures/october_2021/Figure_2_transit.png')
+  
+  print(plot_grid(transit_1, transit_lat,plot.with.inset,
+                  transit_2,min_transit_lat,boxplot_minimum_transit,
+                  labels = c('A', 'B','C','D','E','F','G'),ncol = 3, nrow=2,
+                  rel_widths = c(2.5,1,2,2,2,2), 
+                  rel_heights = c(1,1,1,1,1,1),label_size = 15))
+  
+  dev.off()
+  
+  #create separate annual and minimum figures for presentations
+  
+  #annual transit
+  png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/annual_transit.png')
+  
+  print(plot_grid(transit_1, transit_lat,boxplot_annual_transit,
+                  labels = c('A', 'B','C'),ncol = 3, nrow=1,
+                  rel_widths = c(2.75,1,2), 
+                  rel_heights = c(1,1,1),label_size = 15))
+  
+  dev.off()
+  
+  #minimum transit time
+  png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/minimum_transit.png')
+  
+  print(plot_grid(transit_2,min_transit_lat,boxplot_minimum_transit,
+                  labels = c('A', 'B','C'),ncol = 3, nrow=1,
+                  rel_widths = c(2.75,1,2), 
+                  rel_heights = c(1,1,1),label_size = 15))
+  
+  dev.off()
   
   

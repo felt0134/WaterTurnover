@@ -451,7 +451,7 @@ annual_unfiltered_list_median<-list()
 annual_unfiltered_list_95ci<-list()
 annual_unfiltered_list_5ci<-list()
 
-for(i in unfiltered_data){
+for(i in annual_median){
   
   unfiltered_df<-as.data.frame(rasterToPoints(i))
   #head(unfiltered_df)
@@ -596,7 +596,7 @@ write.csv(merge_min_median_95,'Figures/october_2021/minimum_transit_summary.csv'
 
 
 #-------------------------------------------------------------------------------
-#seasonal transit time table (in progress) -----
+# seasonal transit time table (in progress) -----
 
 
 #winter
@@ -774,7 +774,7 @@ write.csv(coefficients,'Figures/october_2021/coefficients_annual_transit_summari
 
 
 #-------------------------------------------------------------------------------
-#summarize model coefficients: annual -------
+# summarize model coefficients: annual -------
   
   get_95 <- function(x){
     
@@ -831,7 +831,7 @@ write.csv(coefficients,'Figures/october_2021/coefficients_minimum_transit_summar
 
 
 #-------------------------------------------------------------------------------
-#correlation between average/range of storage and annual biomass ------
+# correlation between average/range of storage and annual biomass ------
 
 #import biomass
 aboveground_biomass <- raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')

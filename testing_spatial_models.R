@@ -147,3 +147,26 @@ mtext("B", side=side, line=line, cex=cex, adj=adj)
 
 dev.off()
 
+
+#----
+
+grasslands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_grassland_unfiltered.tif')
+forests_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_forest_unfiltered.tif')
+shrublands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_shrubland_unfiltered.tif')
+tundras_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_tundra_unfiltered.tif')
+croplands_unfiltered <- raster('./../../../Data/Derived_Data/Turnover/Annual/annual_transit_vwc_cropland_unfiltered.tif')
+
+global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
+                                    shrublands_unfiltered,tundras_unfiltered,
+                                    croplands_unfiltered)
+
+#filter out zeros and truncate by 95th quantile
+annual_transit <- data.frame(rasterToPoints(global_unfilitered)) %>%
+  filter(layer > 0)
+
+#import temp data
+
+temp_data <- raster('./../../../Data/Derived_data/Climate/mean_daily_ppt_2015_2017.tif')
+
+temp_data <- resample(temp_data,global_unfilitered)
+plot(temp_data,'mean daily temp')

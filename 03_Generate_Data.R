@@ -707,7 +707,45 @@ mean_pet <- mask(mean_pet,mean_aridity)
 writeRaster(mean_pet,'./../../../Data/Derived_data/Climate/mean_pet.tif',
             overwrite=TRUE)
 
-#stopped with this because unclear the time units of these data
+
+#temperature
+#first look at ncdf file to get variable names
+nc_open('./../../../Data/climate/Tmean_mean_2015_2017.nc')
+# 'Tmean_mean'
+plot(rasterize(climate_data_2))
+
+temp <- raster_from_nc_expand_grid('./../../../Data/climate/Tmean_mean_2015_2017.nc',
+                                   'Tmean_mean')
+#plot(temp,main='mean daily temp')
+
+#save
+writeRaster(temp,'./../../../Data/Derived_data/Climate/mean_daily_ppt_2015_2017.tif',
+            overwrite=TRUE)
 
 
+#maximum temp
+nc_open('./../../../Data/climate/Tmax_mean_2015_2017.nc')
+max_temp <- raster_from_nc_expand_grid('./../../../Data/climate/Tmax_mean_2015_2017.nc',
+                                   'Tmax_mean')
 
+plot(max_temp)
+
+
+#load file
+nc_data <- nc_open('./../../../Data/climate/Tmax_mean_2015_2017.nc')
+
+# Longitude 
+lon <- ncvar_get(nc_data ,"lon")
+dim(lon)
+# Latitude 
+lat <- ncvar_get(nc_data ,"lat")
+dim(lat)
+# Variable
+var <- ncvar_get(nc_data,'Tmax_mean')
+
+#convert to raster
+latlong = expand.grid(long=lon, lat=lat)
+latlong = data.frame(cbind(latlong, aridity = c(var)))
+latlong = na.exclude(latlong)
+summary(latlong)
+colnames(latlong) <- c('x','y',variable)

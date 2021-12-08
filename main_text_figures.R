@@ -7,8 +7,7 @@ library(cowplot)
 #figure 1: Storage ------
 
 #mean annual storage (A)
-
-#load in annual storage and combine
+#111*.083
 grasslands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_grassland_unfiltered.tif')
 forests_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_forest_unfiltered.tif')
 shrublands_unfiltered_storge <- raster('./../../../Data/Derived_Data/VWC/Annual/annual_storage_vwc_shrubland_unfiltered.tif')
@@ -29,7 +28,7 @@ annual_storage <- truncate_for_mapping(annual_storage,3)
 
 storage_1 <- ggplot(annual_storage, aes(x = x, y = y, fill = value)) + 
   geom_raster() + 
-  g#eom_sf()
+  #geom_sf()
   scale_fill_scico('Aboveground water storage (mm)',palette = 'batlow',direction=-1) +
   xlab('') +
   ylab('') +
@@ -54,77 +53,56 @@ storage_1 <- ggplot(annual_storage, aes(x = x, y = y, fill = value)) +
     axis.line.y = element_blank())
 
 
-#range of storage (B)
+#compare to other pools/estimates
 
-# #load in intra-annual range of storage
-# grasslands_unfiltered_storage_range <- 
-#   raster('./../../../Data/Derived_Data/VWC/Range/VWC_grassland_range_storage.tif')
-# forests_unfiltered_storage_range <- 
-#   raster('./../../../Data/Derived_Data/VWC/Range/VWC_forest_range_storage.tif')
-# shrublands_unfiltered_storage_range <- 
-#   raster('./../../../Data/Derived_Data/VWC/Range/VWC_shrubland_range_storage.tif')
-# tundras_unfiltered_storage_range<- 
-#   raster('./../../../Data/Derived_Data/VWC/Range/VWC_tundra_range_storage.tif')
-# croplands_unfiltered_storage_range <- 
-#   raster('./../../../Data/Derived_Data/VWC/Range/VWC_cropland_range_storage.tif')
-# 
-# 
-# storage_range = raster::merge(grasslands_unfiltered_storage_range,forests_unfiltered_storage_range,
-#                               shrublands_unfiltered_storage_range,tundras_unfiltered_storage_range,
-#                               croplands_unfiltered_storage_range)
-# plot(storage_range)
-# storage_range_df <- data.frame(rasterToPoints(storage_range))
-# head(storage_range_df)
-# 
-# #summary stats
-# # hist(storage_range_df$layer)
-# # median(storage_range_df$layer)
-# # max(storage_range_df$layer)
-# # 16 mm
-# 
-# 
-# storage_2 <- ggplot(storage_range_df, aes(x = x, y = y, fill = layer)) + 
-#   geom_raster() + 
-#   scale_fill_scico('Intra-annual range of water storage (mm)',palette = 'batlow',direction=-1) +
-#   xlab('') +
-#   ylab('') +
-#   theme(
-#     axis.text.x = element_blank(), #angle=25,hjust=1),
-#     axis.text.y = element_blank(),
-#     axis.title.x = element_text(color='black',size=10),
-#     axis.title.y = element_text(color='black',size=10),
-#     axis.ticks = element_blank(),
-#     legend.key = element_blank(),
-#     #legend.title = element_blank(),
-#     #legend.text = element_text(size=2),
-#     #legend.position = c(0.7,0.1),
-#     #legend.margin =margin(r=5,l=5,t=5,b=5),
-#     #legend.position = c(0.12,0.3),
-#     legend.position = 'top',
-#     strip.background =element_rect(fill="white"),
-#     strip.text = element_text(size=10),
-#     panel.background = element_rect(fill=NA),
-#     panel.border = element_blank(), #make the borders clear in prep for just have two axes
-#     axis.line.x = element_blank(),
-#     axis.line.y = element_blank())
+pools <- read.csv('./../../../Data/Pools/H2OPoolSizeEstimates.csv')
+head(pools)
+pools$size <- as.numeric(as.character(pools$Size..km3.))
+
+vegetation_pools <- subset(pools,Pool=='Vegetation')
+barplot(size~Citation,data=vegetation_pools)
+
+mean(vegetation_pools$size)
+
+pool_size <- ggplot(vegetation_pools, aes(x = size, y = reorder(Citation,size))) + 
+  geom_vline(xintercept = 1135.71) +
+  geom_point(size=7) + 
+  ylab('') +
+  annotate("text", x=1450, y=2, label= "Average across studies") +
+  xlab(bquote('Vegetation water pool size'~(km^3))) +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=19),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=14),
+    legend.position = c(0.6,0.15),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
 
 
-# png(height = 3000,width=3000,res=300,'Figures/october_2021/Figure_1_storage.png')
-# 
-# print(plot_grid(storage_1,storage_2,
-#                 labels = c('A', 'B'),ncol = 1, nrow=2,
-#                 rel_widths = c(2,2), 
-#                 rel_heights = c(1,1),label_size = 15))
-# 
-# dev.off()
+
+#add with bivariate VOD VWC relationship
+#https://wilkelab.org/cowplot/articles/plot_grid.html
+
+plots <- align_plots(storage_1, pool_size, align = 'v', axis = 'l')
+# then build the bottom row
+bottom_row <- plot_grid(plots[[2]], vwc_vod_plot, labels = c('B', 'C'), label_size = 15)
 
 
-png(height = 1500,width=3000,res=300,'Figures/october_2021/Figure_1_storage.png')
+png(height = 3500,width=4500,res=300,'Figures/october_2021/Figure_1_Storage_V2.png')
 
-print(plot_grid(storage_1,
-                labels = c(''),ncol = 1, nrow=1,
-                rel_widths = c(2),
-                rel_heights = c(1),label_size = 15))
+# then combine with the top row for final plot
+plot_grid(plots[[1]], bottom_row, labels = c('A', ''), label_size = 12, ncol = 1)
 
 dev.off()
 
@@ -268,6 +246,15 @@ boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit))
     axis.line.y = element_line(colour = "black"))
 
 
+
+#make the inset
+library(cowplot)
+plot.with.inset <-
+  ggdraw() +
+  draw_plot(boxplot_annual_transit) +
+  draw_plot(vwc_isotope_plot, x = .1, y = 0.60, width = .45, height = .40)
+
+
 #minimum transit time 
 
 #load and combine land cover rasters
@@ -406,7 +393,7 @@ boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit)) +
 
 png(height = 2500,width=4500,res=300,'Figures/october_2021/Figure_2_transit.png')
 
-print(plot_grid(transit_1, transit_lat,boxplot_annual_transit,
+print(plot_grid(transit_1, transit_lat,plot.with.inset,
                 transit_2,min_transit_lat,boxplot_minimum_transit,
                 labels = c('A', 'B','C','D','E','F','G'),ncol = 3, nrow=2,
                 rel_widths = c(2.5,1,2,2,2,2), 
@@ -416,25 +403,25 @@ dev.off()
 
 #create separate annual and minimum figures for presentations
 
-#annual transit
-png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/annual_transit.png')
-
-print(plot_grid(transit_1, transit_lat,boxplot_annual_transit,
-                labels = c('A', 'B','C'),ncol = 3, nrow=1,
-                rel_widths = c(2.75,1,2), 
-                rel_heights = c(1,1,1),label_size = 15))
-
-dev.off()
-
-#minimum transit time
-png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/minimum_transit.png')
-
-print(plot_grid(transit_2,min_transit_lat,boxplot_minimum_transit,
-                labels = c('A', 'B','C'),ncol = 3, nrow=1,
-                rel_widths = c(2.75,1,2), 
-                rel_heights = c(1,1,1),label_size = 15))
-
-dev.off()
+# #annual transit
+# png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/annual_transit.png')
+# 
+# print(plot_grid(transit_1, transit_lat,boxplot_annual_transit,
+#                 labels = c('A', 'B','C'),ncol = 3, nrow=1,
+#                 rel_widths = c(2.75,1,2), 
+#                 rel_heights = c(1,1,1),label_size = 15))
+# 
+# dev.off()
+# 
+# #minimum transit time
+# png(height = 1500,width=4500,res=300,'./../../../Meetings/AGU 2021/Talk/minimum_transit.png')
+# 
+# print(plot_grid(transit_2,min_transit_lat,boxplot_minimum_transit,
+#                 labels = c('A', 'B','C'),ncol = 3, nrow=1,
+#                 rel_widths = c(2.75,1,2), 
+#                 rel_heights = c(1,1,1),label_size = 15))
+# 
+# dev.off()
 
 
 
