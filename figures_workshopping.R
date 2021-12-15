@@ -625,3 +625,43 @@ png(height = 2000,width=3000,res=300,'Figures/october_2021/Figure_3_seasonal_tra
   dev.off()
   
   
+# transntif igure 2 withc olor gradient ----
+  
+  
+  ggplot() +
+    geom_polygon(data = annual_filtered_df, aes(x, y, group = group), 
+                 color= "black", size = 1, fill = NA) +  
+    geom_segment(data = vl_fill, aes(x = xnew, xend = xend, y = y, yend = y,
+                                     color = violinwidth))  
+  
+  ?geom_jitter
+  boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit,color=transit)) +
+    scale_color_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
+    geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
+    geom_violin(width=1.3) +
+    geom_boxplot(width=.1) +
+    #geom_point(size=.1)
+    #scale_fill_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
+    ylab('Annual transit time (days)') +
+    xlab('') +
+    scale_x_discrete(labels=c("cropland" = "Cropland", "forest" = "Forest",
+                              "grassland" = "Grassland",'shrubland'='Shrubland',
+                              'tundra'='Tundra')) +
+    theme(
+      axis.text.x = element_text(color='black',size=10), #angle=25,hjust=1),
+      axis.text.y = element_text(color='black',size=10),
+      axis.title.x = element_text(color='black',size=12),
+      axis.title.y = element_text(color='black',size=12),
+      axis.ticks = element_line(color='black'),
+      legend.key = element_blank(),
+      #legend.title = element_blank(),
+      legend.text = element_text(size=12),
+      legend.position = c(0.2,0.80),
+      #legend.margin =margin(r=5,l=5,t=5,b=5),
+      #legend.position = 'none',
+      strip.background =element_rect(fill="white"),
+      strip.text = element_text(size=10),
+      panel.background = element_rect(fill=NA),
+      panel.border = element_blank(), #make the borders clear in prep for just have two axes
+      axis.line.x = element_line(colour = "black"),
+      axis.line.y = element_line(colour = "black"))

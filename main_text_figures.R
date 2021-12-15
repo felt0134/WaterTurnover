@@ -131,6 +131,7 @@ annual_transit <- data.frame(rasterToPoints(global_unfilitered)) %>%
 annual_transit <- data.frame(rasterToPoints(global_unfilitered))
 annual_transit <- truncate_for_mapping(annual_transit,3)
 #head(annual_transit)
+summary(annual_transit)
 
 # Annual transit time map (A)
 transit_1 <- ggplot(annual_transit, aes(x = x, y = y, fill = value)) + 
@@ -165,7 +166,8 @@ transit_1 <- ggplot(annual_transit, aes(x = x, y = y, fill = value)) +
 lat <- aggregate(value~y,mean,data=annual_transit)
 #head(lat)
 
-transit_lat <- ggplot(lat,aes(value,y)) +
+transit_lat <- ggplot(lat,aes(value,y,color=value)) +
+  scale_color_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
   geom_point(size=1) +
   xlab('Annual transit time (days)') +
   ylab('Latitude (degrees)') +
@@ -179,9 +181,9 @@ transit_lat <- ggplot(lat,aes(value,y)) +
     legend.key = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size=14),
-    legend.position = c(0.6,0.25),
+    #legend.position = c(0.6,0.25),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
-    #legend.position = 'none',
+    legend.position = 'none',
     strip.background =element_rect(fill="white"),
     strip.text = element_text(size=10),
     panel.background = element_rect(fill=NA),
@@ -215,10 +217,13 @@ for(i in unfiltered_data){
 }
 
 annual_filtered_df <- do.call('rbind',annual_unfiltered_list_95)
+summary(annual_filtered_df)
 #head(annual_filtered_df)
 #aggregate(transit~land_cover,max,data=annual_filtered_df)
 
-boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit)) +
+boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit,color=transit)) +
+  scale_color_scico('Transit time (days)',palette = 'batlow',direction=-1) +
+  geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1.3) +
   geom_boxplot(width=.1) +
   ylab('Annual transit time (days)') +
@@ -233,9 +238,10 @@ boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit))
     axis.title.y = element_text(color='black',size=12),
     axis.ticks = element_line(color='black'),
     legend.key = element_blank(),
-    legend.title = element_blank(),
-    legend.text = element_text(size=12),
-    legend.position = c(0.75,0.70),
+    legend.title = element_text(size=10),
+    legend.key.size = unit(.50, 'cm'),
+    legend.text = element_text(size=10),
+    legend.position = c(0.14,0.80),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
     #legend.position = 'none',
     strip.background =element_rect(fill="white"),
@@ -247,17 +253,17 @@ boxplot_annual_transit <- ggplot(annual_filtered_df,aes(x=land_cover,y=transit))
 
 
 
-#make the inset
-library(cowplot)
-plot.with.inset <-
-  ggdraw() +
-  draw_plot(boxplot_annual_transit) +
-  draw_plot(vwc_isotope_plot, x = .1, y = 0.60, width = .45, height = .40)
-
-
-#minimum transit time 
-
-#load and combine land cover rasters
+# #make the inset
+# library(cowplot)
+# plot.with.inset <-
+#   ggdraw() +
+#   draw_plot(boxplot_annual_transit) +
+#   draw_plot(vwc_isotope_plot, x = .1, y = 0.60, width = .45, height = .40)
+# 
+# 
+# #minimum transit time 
+# 
+# #load and combine land cover rasters
 grasslands_minimum <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_grassland_minimum_transit.tif')
 forests_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_forest_minimum_transit.tif')
 shrublands_minimum  <- raster('./../../../Data/Derived_Data/Turnover/Minimum/VWC_shrubland_minimum_transit.tif')
@@ -273,7 +279,7 @@ minimum_transit <- data.frame(rasterToPoints(global_minimum)) %>%
   filter(layer > 0)
 
 minimum_transit <- truncate_for_mapping(minimum_transit,3)
-#head(minimum_transit)
+# #head(minimum_transit)
 
 # Minimum transit time map 
 transit_2 <- ggplot(minimum_transit, aes(x = x, y = y, fill = value)) + 
@@ -307,7 +313,8 @@ transit_2 <- ggplot(minimum_transit, aes(x = x, y = y, fill = value)) +
 #average minimum transit by latitude
 lat_2 <- aggregate(value~y,mean,data=minimum_transit)
 
-min_transit_lat <- ggplot(lat_2,aes(value,y)) +
+min_transit_lat <- ggplot(lat_2,aes(value,y,color=value)) +
+  scale_color_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
   geom_point(size=1) +
   xlab('Minimum transit time (days)') +
   ylab('Latitude (degrees)') +
@@ -321,9 +328,9 @@ min_transit_lat <- ggplot(lat_2,aes(value,y)) +
     legend.key = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size=14),
-    legend.position = c(0.6,0.25),
+    #legend.position = c(0.6,0.25),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
-    #legend.position = 'none',
+    legend.position = 'none',
     strip.background =element_rect(fill="white"),
     strip.text = element_text(size=10),
     panel.background = element_rect(fill=NA),
@@ -361,7 +368,9 @@ min_filtered_df <- do.call('rbind',min_unfiltered_list_95)
 head(min_filtered_df)
 aggregate(transit~land_cover,max,data=min_filtered_df)
 
-boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit)) +
+boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit,color=transit)) +
+  scale_color_scico('Transit time (days)',palette = 'batlow',direction=-1) +
+  geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1.2) +
   geom_boxplot(width=.1) +
   ylab('Minimum transit time (days)') +
@@ -376,11 +385,14 @@ boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit)) +
     axis.title.y = element_text(color='black',size=12),
     axis.ticks = element_line(color='black'),
     legend.key = element_blank(),
-    legend.title = element_blank(),
-    legend.text = element_text(size=12),
-    legend.position = c(0.75,0.70),
+    legend.title = element_text(size=10),
+    #legend.title = element_blank(),
+    legend.text = element_text(size=8),
+    legend.position = c(0.14,0.8),
+    legend.margin=margin(c(0.1,.1,.1,.1)),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
-    #legend.position = 'none',
+    #legend.position = 'top',
+    legend.key.size = unit(.50, 'cm'),
     strip.background =element_rect(fill="white"),
     strip.text = element_text(size=10),
     panel.background = element_rect(fill=NA),
@@ -393,7 +405,7 @@ boxplot_minimum_transit <- ggplot(min_filtered_df,aes(x=land_cover,y=transit)) +
 
 png(height = 2500,width=4500,res=300,'Figures/october_2021/Figure_2_transit.png')
 
-print(plot_grid(transit_1, transit_lat,plot.with.inset,
+print(plot_grid(transit_1, transit_lat,boxplot_annual_transit,
                 transit_2,min_transit_lat,boxplot_minimum_transit,
                 labels = c('A', 'B','C','D','E','F','G'),ncol = 3, nrow=2,
                 rel_widths = c(2.5,1,2,2,2,2), 
