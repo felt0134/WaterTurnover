@@ -18,20 +18,35 @@ storage = raster::merge(grasslands_unfiltered_storge,forests_unfiltered_storge,
                         shrublands_unfiltered_storge,tundras_unfiltered_storge,
                         croplands_unfiltered_storge)
 
+Albers <-
+  crs(
+    '+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96
+       +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs'
+  )
+
+crs(storage) <- Albers
+plot(storage)
+
 #filter out zeros and truncate by 95th quantile
 annual_storage <- data.frame(rasterToPoints(storage)) %>%
   filter(layer > 0)
 
-annual_storage <- truncate_for_mapping(annual_storage,3)
+#median(annual_storage$layer)
+#4.26
+
+annual_storage_truncate <- truncate_for_mapping(annual_storage,3)
 
 #head(annual_storage)
 
-storage_1 <- ggplot(annual_storage, aes(x = x, y = y, fill = value)) + 
+storage_1 <- ggplot(annual_storage_truncate, aes(x = x, y = y, fill = value)) + 
   geom_raster() + 
+  coord_equal() +
   #geom_sf()
   scale_fill_scico('Aboveground water storage (mm)',palette = 'batlow',direction=-1) +
   xlab('') +
   ylab('') +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
   theme(
     axis.text.x = element_blank(), #angle=25,hjust=1),
     axis.text.y = element_blank(),
@@ -52,26 +67,38 @@ storage_1 <- ggplot(annual_storage, aes(x = x, y = y, fill = value)) +
     axis.line.x = element_blank(),
     axis.line.y = element_blank())
 
+#figure out a way to get rid of the white space
 
 #compare to other pools/estimates
 
 pools <- read.csv('./../../../Data/Pools/H2OPoolSizeEstimates.csv')
 head(pools)
 pools$size <- as.numeric(as.character(pools$Size..km3.))
+unique(pools$Pool)
+
+#pool means
+pool_means <- aggregate(Size..km3. ~ Pool,mean,data=pools)
+(16500.000 - 1135.708)/1135.708
 
 vegetation_pools <- subset(pools,Pool=='Vegetation')
 barplot(size~Citation,data=vegetation_pools)
 
 mean(vegetation_pools$size)
 
-pool_size <- ggplot(vegetation_pools, aes(x = size, y = reorder(Citation,size))) + 
-  geom_vline(xintercept = 1135.71) +
-  geom_point(size=7) + 
+#pool_size <- ggplot(vegetation_pools, aes(x = size, y = reorder(Citation,size))) + 
+pool_size <- ggplot(pools, aes(y = reorder(Pool,size), x = log(size)))  +
+#geom_vline(xintercept = 1135.71) +
+  stat_summary(fun='mean',geom='bar',fill='grey70',color='black') +
+  scale_x_continuous(expand=c(0,0)) +
+  #geom_errorbar(ymin=min(log(size),ymax=max(log(size)))) +
+  geom_errorbar(data=vegetation_pools,mapping=aes(y=Pool,x=log(size)),
+                xmin=5,xmax=10,size=0.5,width=.25) +
+  #geom_point() + 
   ylab('') +
-  annotate("text", x=1450, y=2, label= "Average across studies") +
-  xlab(bquote('Vegetation water pool size'~(km^3))) +
+  #annotate("text", x=1450, y=2, label= "Average across studies") +
+  xlab(bquote('Freshwater pool size'~(log(km^3)))) +
   theme(
-    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.x = element_text(color='black',size=13), #, angle=25,hjust=1),
     axis.text.y = element_text(color='black',size=13),
     axis.title.x = element_text(color='black',size=19),
     axis.title.y = element_text(color='black',size=19),
@@ -128,13 +155,14 @@ global_unfilitered <- raster::merge(grasslands_unfiltered,forests_unfiltered,
 annual_transit <- data.frame(rasterToPoints(global_unfilitered)) %>%
   filter(layer > 0)
 
-annual_transit <- data.frame(rasterToPoints(global_unfilitered))
-annual_transit <- truncate_for_mapping(annual_transit,3)
+median(annual_transit$layer)
+
+annual_transit_truncate <- truncate_for_mapping(annual_transit,3)
 #head(annual_transit)
 summary(annual_transit)
 
 # Annual transit time map (A)
-transit_1 <- ggplot(annual_transit, aes(x = x, y = y, fill = value)) + 
+transit_1 <- ggplot(annual_transit_truncate, aes(x = x, y = y, fill = value)) + 
   geom_tile() + 
   scale_fill_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
   xlab('') +
@@ -438,7 +466,7 @@ dev.off()
 
 
 #-------------------------------------------------------------------------------
-#figure 3: seasonal transit -------
+#figure 3: seasonal transit (NEEDS WORK) -------
 
 
 #winter transit (A)
@@ -605,8 +633,10 @@ head(summer_transit_df)
 # quantile_summer_transit_95 <- quantile(summer_transit_df$layer,prob=0.95)
 
 summer_transit_df <- summer_transit_df %>%
-  filter(layer > 0) %>%
-  filter(layer < quantile_winter_transit_95)
+  filter(layer > 0) 
+
+median(summer_transit_df$layer)
+#3.69
 
 summer_transit_plot <- ggplot()
 summer_transit_plot <- summer_transit_plot + 
@@ -723,7 +753,7 @@ dev.off()
 ?ggarrange
 
 #-------------------------------------------------------------------------------
-#figure 4: climate effects on annual transit -----
+#figure 4: climate effects on annual transit (NEEDS WORK) -----
 
 
 climate_list <-c('aridity','pet','ppt')

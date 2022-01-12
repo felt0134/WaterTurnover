@@ -1294,15 +1294,18 @@ cor(vod_vwc_df$vod.vwc,vod_vwc_df$vwc.ground)
 #try to plot it out
 vwc_vod_plot <- ggplot(vod_vwc_df,
                        aes(vwc.ground,vod.vwc,fill=cover)) +
+  geom_smooth(data=vod_vwc_df,mapping=aes(vwc.ground,vod.vwc,group=2),fullrange=T,
+              method='lm',linetype='dashed',color='black',se=F,legend=F) +
   geom_point(size=5,pch=21) +
   scale_fill_manual(values=c('Grassland'='blue','Forest'='white',
                              'Tundra'='grey','Shrubland'='green')) +
-  #geom_smooth(method='lm',linetype='dashed') +
-  annotate("text", x=7, y=6.3, label= "1:1 Line") +
+  annotate("text", x=9, y=9.7, label= "1:1 Line") +
+  annotate("text", x=9.5, y=8, label= "Slope") +
+  annotate("text", x=2.5, y=10, label= "r = 0.70",size=8) +
   geom_abline(slope=1) +
   #geom_text(aes(label=x),hjust=0,vjust=0) +
-  ylab('VOD-based water storage (mm)') +
-  xlab('VWC-based water storage (mm)') +
+  ylab(bquote('VOD-based water storage'~(mm/m^2))) +
+  xlab(bquote('VWC-based water storage'~(mm/m^2))) +
   theme(
     axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
     axis.text.y = element_text(color='black',size=13),
