@@ -210,99 +210,93 @@ rm(aboveground_biomass)
 # base that can let us know families of the species
 
 #load original data downloaded from TRY
-water.content.try<-read.delim('./../../../Data/water.content.try/14187.txt')
+water_content_try<-read.delim('./../../Data/water.content.try/14187.txt')
 #head(water.content.try)
 
 #trim down columns
-water.content.try<-water.content.try %>% select(SpeciesName,DatasetID,ObservationID, DataName,OrigValueStr,OrigUnitStr)
+water_content_try <- water_content_try %>% 
+  select(SpeciesName,DatasetID,ObservationID, DataName,OrigValueStr,OrigUnitStr)
 
 #sort data IDs and convert to long form
-water.content.try.water.content <- water.content.try %>%
+
+#isolate ldmc
+water_content_try_id <- water_content_try %>%
   dplyr::filter(DataName=='Leaf water content per leaf dry mass')
-#head(water.content.try.water.content)
+#head(water_content_try_id)
 
 #reduce and rename column names
-water.content.try.water.content<-water.content.try.water.content[c(1,2,3,5,6)]
-colnames(water.content.try.water.content) <-c('SpeciesName','DatasetID','ObservationID','water.content','units')
-water.content.try.water.content$water.content<-as.numeric(as.character(water.content.try.water.content$water.content)) #make numeric
-water.content.try.water.content$water.content<-round(water.content.try.water.content$water.content,2) #round 2 decimals
-#summary(water.content.try.water.content)
+water_content_try_id <- water_content_try_id %>% 
+  select(SpeciesName,DatasetID,ObservationID,DataName,OrigValueStr,OrigUnitStr) %>%
+  rename('water_content' = 'OrigValueStr',
+         'units' = 'OrigUnitStr')
 
-#get latitude
-water.content.try.lat <- water.content.try %>%
-  dplyr::filter(DataName=='Latitude')
-head(water.content.try.lat)
+#change water content to numeric and round to two decimal places
+water_content_try_id$water_content <- 
+  as.numeric(as.character(water_content_try_id$water_content)) #make numeric
 
-#reduce and rename column names
-water.content.try.lat<-water.content.try.lat[c(1,2,3,5)]
-colnames(water.content.try.lat) <-c('SpeciesName','DatasetID','ObservationID','Latitude')
+water_content_try_id$water_content <- 
+  round(water_content_try_id$water_content,2) #round 2 decimals
+#summary(water_content_try_id)
 
-#get rid of odd 212 site (maybe add later)
-water.content.try.lat.no212 <- water.content.try.lat %>%
-  dplyr::filter(!DatasetID =='212')
-head(water.content.try.lat.no212)
+#isolate latitude
+water_content_try_lat <-  water_content_try %>%
+  dplyr::filter(DataName=='Latitude') %>%
+  select(SpeciesName, DatasetID, ObservationID,OrigValueStr) %>%
+  rename('Latitude' = 'OrigValueStr') %>%
+  dplyr::filter(!DatasetID =='212') #remove 212
 
-# #fix up latitude to get ready for conversion to DCMs
-# water.content.try.lat$Latitude <- gsub('\xb011','d',water.content.try.lat$Latitude)
-# water.content.try.lat$Latitude.test<-char2dms("51d'41?N")
-# water.content.try.lat$Latitude <- gsub('?','\"',water.content.try.lat$Latitude)
-
-#get longitude
-water.content.try.lon <- water.content.try %>%
-  dplyr::filter(DataName=='Longitude')
-#head(water.content.try.lon)
-
-#reduce and rename column names
-water.content.try.lon<-water.content.try.lon[c(1,2,3,5)]
-colnames(water.content.try.lon) <-c('SpeciesName','DatasetID','ObservationID','Longitude')
-
-#get rid of odd 212 site (maybe add later)
-water.content.try.lon.no212 <- water.content.try.lon %>%
-  dplyr::filter(!DatasetID =='212')
-#head(water.content.try.lon.no212)
+#isolate longitude
+water_content_try_lon <-  water_content_try %>%
+  dplyr::filter(DataName=='Longitude') %>%
+  select(SpeciesName, DatasetID, ObservationID,OrigValueStr) %>%
+  rename('Longitude' = 'OrigValueStr') %>%
+  dplyr::filter(!DatasetID =='212') #remove 212
 
 #bind the lat and lon
-lat.lon.no.212<-merge(water.content.try.lon.no212,water.content.try.lat.no212,by=c('DatasetID','ObservationID','SpeciesName'))
-#head(lat.lon.no.212)
+lat_lon_try <- merge(water_content_try_lat,water_content_try_lon,
+        by=c('DatasetID','ObservationID','SpeciesName'))
+#head(lat_lon_try,1)
 
 #merge with water content
-lat.lon.no.212.water.content<-merge(lat.lon.no.212,water.content.try.water.content,by=c('DatasetID','ObservationID','SpeciesName'))
-#head(lat.lon.no.212.water.content)
+lat_lon_try_water_content <- merge(lat_lon_try,water_content_try_id,
+                                    by=c('DatasetID','ObservationID','SpeciesName'))
+#head(lat_lon_try_water_content,1)
 
-# re-order and rename columns
-col_order <- c("Longitude", "Latitude",'SpeciesName', "water.content",
-               "units", "DatasetID",'ObservationID')
-lat.lon.no.212.water.content<- lat.lon.no.212.water.content[, col_order]
-colnames(lat.lon.no.212.water.content)<-c("x", "y",'SpeciesName', "water.content",
-                                          "units", "DatasetID",'ObservationID')
-#head(lat.lon.no.212.water.content)
+#reorder and rename columns
+lat_lon_try_water_content <- lat_lon_try_water_content %>%
+  select("Longitude", "Latitude",'SpeciesName', "water_content",
+         "units", "DatasetID",'ObservationID') %>%
+  rename("x" = "Longitude",
+         "y" = "Latitude")
+
+
+#head(lat_lon_try_water_content,1)
 
 #get family names
 
-# species <- unique(lat.lon.no.212.water.content$SpeciesName)
+species <- unique(lat_lon_try_water_content$SpeciesName)
 # length(species)
 
-species.list<-list()
+library(taxize)
 
+species_list<-list()
 for(i in species){
   
-  test<-tax_name(i,get = c("genus","family","order"))
-  species.list[[i]] <- data.frame(test)
+  try_taxonomy <- tax_name(i,get = c("genus","family","order"))
+  species_list[[i]] <- data.frame(try_taxonomy)
   
 }
 
-species_df <- do.call("rbind", species.list)
+species_df <- do.call("rbind", species_list)
 
 colnames(species_df) <- c('db','SpeciesName','genus','family', 'order')
 #head(species_df)
 
 #merge them
-species_water_content_merge<-merge(lat.lon.no.212.water.content,species_df,by=c('SpeciesName'))
+species_water_content_merge<-merge(species_df,lat_lon_try_water_content,by=c('SpeciesName'))
 
 #save this
 write.csv(species_water_content_merge,'./../../../Data/water.content.try/water_content_taxonomy_global_dataset.csv')
-
-# done
 
 
 #-------------------------------------------------------------------------------
@@ -310,56 +304,40 @@ write.csv(species_water_content_merge,'./../../../Data/water.content.try/water_c
 
 # get leaf water content estimates for the grassland land cover
 
-# to do:
-
-# Will need to combine the POA filtered data frame with the dataframes for other
-# families that have been double checked to see whether the family or species is herbaceous
-
 #set projection
 projection <- '+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0'
 
-# derived_wc<-read.csv('./../../../Data/water.content.try/derived.dataset.csv')
-derived_wc<-read.csv('./../../../Data/water.content.try/water_content_taxonomy_global_dataset.csv')
+#step 1: create a dataframe with list of herbaceous families to be double checked
 
-#
+derived_wc <- read.csv('./../../Data/water.content.try/water_content_taxonomy_global_dataset.csv')
 
-#if you want to filter just to poacaea
-derived_wc_poa<-subset(derived_wc,family==c('Poaceae'))
-mean(derived_wc_poa$water.content)
-hist(derived_wc_poa$water.content)
-length(derived_wc_poa$water.content)
-
-#if you want to get all herbs
-# herb_family<-read.csv('./../../../Data/water.content.try/family.list.2.csv')
-# #unique(herb_family$notes)
-# # herb_family<-subset(herb_family,Herb.=='Yes')
-# # family.list <- unique(herb_family$family)
+# get name of all herbs (x2 check where this came from)
+herb_family<-read.csv('./../../Data/water.content.try/family.list.2.csv')
+herb_family<-subset(herb_family,Herb.=='Yes')
+family.list <- unique(herb_family$family)
 # 
-# #if you want to look at the 'mostly herb' species
-# herb_family<-subset(herb_family,notes=='mostly_herb')
-# family.list <- unique(herb_family$family)
-# 
-# herbs.list <- list()
-# 
-# for(i in family.list){
-#   
-#   herbs<-subset(derived_wc,family==i)
-#   herbs.list[[i]] <- herbs
-#   
-# }
 
-#herbs.list.df <- do.call("rbind",herbs.list)
-#unique(herbs.list.df$SpeciesName)
-#about 700 more observations than just poa
+herbs.list <- list()
+
+for(i in family.list){
+
+  herbs<-subset(derived_wc,family==i)
+  herbs.list[[i]] <- herbs
+
+}
+
+herbs.list.df <- do.call("rbind",herbs.list)
+length(unique(herbs.list.df$SpeciesName))
+#about 300 more observations than just poa
 
 #create and save a list of mostly 'herb species' to X2 check which species are herb
-# mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
-# colnames(mostly.herb.list) <- 'Species'
+mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
+colnames(mostly.herb.list) <- 'Species'
 #write.csv(mostly.herb.list,'./../../../Data/Derived_Data/Land_Cover_Water_Content/mostly_herb_X2_check.csv')
 
 #after checking which species are truly herbaceous in the mostly_herb_X2_check data frame,
 #now you can load in the X2 checked data frame
-herbx2.list <-read.csv('./../../../Data/water.content.try/mostly_herb_X2_check.csv')
+herbx2.list <-read.csv('./../../Data/water.content.try/mostly_herb_X2_check.csv')
 herbx2.list <- subset(herbx2.list,Herbaceous.=='Yes')
 herbx2.list <- herbx2.list[c(2)]
 
@@ -376,27 +354,87 @@ for(i in herbx2.list){
 }
 
 herbsx2.list.df <- do.call("rbind",herbsx2.list)
-head(herbsx2.list.df)
+head(herbsx2.list.df,1)
 
 #take the means of each coordinate and turn into raster (do this once)
 #derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc)
 
 #just poa
+derived_wc_poa <- derived_wc %>% filter(family=='Poaceae')
 derived_wc_mean_poa<-aggregate(water.content~x+y,mean,data=derived_wc_poa)
-head(derived_wc_mean_poa)
+head(derived_wc_mean_poa,1)
 
-#all herb or mostly herb (depends whats upstream of this)
+
+#all herb 
 derived_wc_mean_herbs<-aggregate(water.content~x+y,mean,data=herbsx2.list.df)
-head(derived_wc_mean_herbs)
+head(derived_wc_mean_herbs,1)
 
-#bind Poa and all other herbaceous species (pixel averages)
+#bind Poa and all other herbaceous species (pixel averages) to have all herb species
 derived_wc_mean <- rbind(derived_wc_mean_poa,derived_wc_mean_herbs)
+
+#final averag
+derived_wc_mean_2 <- aggregate(water.content~x+y,mean,data=derived_wc_mean)
+head(derived_wc_mean_2,1)
+plot(y~x,data=derived_wc_mean_2)
+
+
+#new approach using nearest spatial points
+
+#turn ground data to spdf
+coords_ground <- derived_wc_mean_2[ , c("x", "y")]   # coordinates
+data_ground   <- data.frame(derived_wc_mean_2[c(3)])          # data
+crs    <- CRS('+proj=longlat +datum=WGS84 +no_defs') # proj4string of coords
+
+spdf_ground <- SpatialPointsDataFrame(coords      = coords_ground,
+                                      data        = data_ground, 
+                                      proj4string = crs)
+
+#turn vod raster data to spatial points DF
+annual_strorage_2 <- annual_turnover_lc %>%
+  select(lon,lat,annual_storage,group,group_2)
+rownames(annual_strorage_2) <- NULL
+
+# prepare coordinates, data, and proj4string
+coords_vod <- annual_strorage_2[ , c("lon", "lat")]   # coordinates
+data_vod   <- annual_strorage_2[ , 3:5]          # data
+
+# make the SpatialPointsDataFrame object
+spdf_vod <- SpatialPointsDataFrame(coords      = coords_vod,
+                                   data        = data_vod, 
+                                   proj4string = crs)
+
+library(FNN)
+
+#link ground-based coordinates to vod coordinates for storage
+nn1 = get.knnx(coordinates(spdf_vod), coordinates(spdf_ground), 1)
+vector <- data.frame(nn1[1])
+vector <- vector[c(1:nrow(vector)),]
+spdf_vod_df <- data.frame(spdf_vod)
+new_df <- spdf_vod_df[c(vector),]
+new_df <- new_df %>%
+  select(annual_storage,group,lon,lat)
+
+points(lat~lon,data=new_df,add=T,col='red')
+
+cbind_ground_vod_herb <- cbind(new_df,derived_wc_mean_2)
+cbind_ground_vod_herb <- cbind_ground_vod_herb %>%
+  filter(group==c('Cropland','Grassland'))
+
+#create file for double checking
+write.csv(cbind_ground_vod_herb,
+          './../../Data/water.content.try/crop_grassland_mean_water_content.csv')
+
+
+#olf approach to filter by making land cover a raster
+
+
 
 #STOPPED HERE
 
 #all mostly herbs
 
 est_fix_wc_grid<-fix_grid(derived_wc_mean)
+plot(est_fix_wc_grid)
 proj4string(est_fix_wc_grid) <- CRS(projection)
 
 grasslands<-raster('./../../../Data/Derived_Data/Land_Cover_Distributions/Grassland.tif')
@@ -423,31 +461,8 @@ summary(test_merge)
 
 #save as csv
 
-#just poa
-#write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
-
-#all herb
-# write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
-
-# all 'mostly herb' 
-#write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
-
 # Poa and herb X2 checked
 write.csv(test_merge,'./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_poa_herbX2.csv')
-
-# #compare
-# poa<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content.csv')
-# summary(poa)
-# 
-# #all herb
-# all_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_all_herb_families.csv')
-# summary(all_herb)
-# 
-# #mostly herb
-# mostly_herb<-read.csv('./../../../Data/Derived_Data/Land_Cover_Water_Content/grassland_water_content_mostly_herb_families.csv')
-# summary(mostly_herb)
-
-
 
 #-------------------------------------------------------------------------------
 # Import VOD (converted to VWC) monthly data for 2016 ------

@@ -59,9 +59,9 @@ for(i in annual_turnover_dir[1:12]) {
 annual_turnover_lc <- do.call('rbind', annual_turnover_list)
 rm(annual_turnover_list)
 rownames(annual_turnover_lc) <- NULL
-head(annual_turnover_lc,1)
 
-warnings()
+#head(annual_turnover_lc,1)
+
 
 #
 #
@@ -83,7 +83,7 @@ for(i in minimum_turnover_dir[1:12]){
   #get land cover ID
   name <-
     gsub(
-      './../../../Data/turnover_from_python/minimum/land_cover_csvs//landclass.','',i)
+      './../../Data/turnover_from_python/minimum/land_cover_csvs//landclass.','',i)
   name <- gsub('.3856x1624.bin.nc.csv','', name)
   lc_filtered$class_number <- as.integer(name)
   lc_filtered <- merge(lc_filtered, lc_id, by = c('class_number'))
@@ -95,6 +95,7 @@ for(i in minimum_turnover_dir[1:12]){
 
 minimum_turnover_lc <- do.call('rbind',minimum_turnover_list)
 rm(minimum_turnover_list)
+rownames(minimum_turnover_lc) <- NULL
 
 
 #-------------------------------------------------------------------------------
@@ -302,8 +303,10 @@ print(plot_grid(annual_turnover_by_lat_plot, annual_turnover_by_lat_facet,
 
 dev.off()
 
-rm(annual_turnover_by_lat_plot, annual_turnover_by_lat_facet,annual_turnover_boxplot,
-   minimum_turnover_by_lat_plot, minimum_turnover_by_lat_facet,minimum_turnover_boxplot)
+#cleanup
+rm(annual_turnover_by_latitude,minimum_turnover_by_latitude,
+   annual_turnover_by_lat_plot, annual_turnover_by_lat_facet,
+   minimum_turnover_by_lat_plot, minimum_turnover_by_lat_facet)
 
 #-------------------------------------------------------------------------------
 
@@ -313,9 +316,10 @@ rm(annual_turnover_by_lat_plot, annual_turnover_by_lat_facet,annual_turnover_box
 # turnover boxplots -------
 
 
-aggregate(annual_turnover~group_2,median,data=annual_turnover_lc_95) # to find order
+#aggregate(annual_turnover~group_2,median,data=annual_turnover_lc_95) # to find order
 
 unique(annual_turnover_lc$group_2)
+#summary(annual_turnover_lc)
 
 #reorder by median transit
 level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
@@ -327,7 +331,7 @@ level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
 annual_turnover_boxplot <- ggplot(annual_turnover_lc_95,aes(x=factor(group_2,level=level_order),
                                                             y=annual_turnover,
                                                             color=annual_turnover)) +
-  geom_hline(yintercept = 5.9) + #global median
+  geom_hline(yintercept = 5.4) + #global median
   scale_color_scico('Annual transit time (days)',palette = 'batlow',direction=-1) +
   geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1) +
@@ -357,12 +361,13 @@ annual_turnover_boxplot <- ggplot(annual_turnover_lc_95,aes(x=factor(group_2,lev
 
 
 #min transit by land cover boxplot/violin plots
+summary(minimum_turnover_lc)
 
 #plot
 minimum_turnover_boxplot <- ggplot(minimum_turnover_lc_95,aes(x=factor(group_2,level=level_order),
                                                               y=minimum_turnover,
                                                               color=minimum_turnover)) +
-  geom_hline(yintercept = 2.25) + #global median
+  geom_hline(yintercept = 2.37) + #global median
   scale_color_scico('Minimum transit time (days)',palette = 'batlow',direction=-1) +
   geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1) +
@@ -401,6 +406,9 @@ print(plot_grid(annual_turnover_boxplot, minimum_turnover_boxplot,
 
 dev.off()
 
+#cleanup
+rm(annual_turnover_lc_95,minimum_turnover_lc_95,annual_turnover_boxplot, 
+   minimum_turnover_boxplot)
 
 
 #-------------------------------------------------------------------------------
@@ -442,7 +450,7 @@ storage_by_lat <- ggplot(storage_by_latitude,aes(lat,annual_storage,col=group)) 
                                'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                       labels=c('Grassland'='Grassland','Forest'='Forest',
                                'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  ylab('Aboveground water storage (mm)') +
+  ylab(bquote('Aboveground water storage'~(mm/m^2))) +
   xlab('Latitude (degrees)') +
   geom_vline(xintercept = 0) +
   theme(
@@ -465,26 +473,25 @@ storage_by_lat <- ggplot(storage_by_latitude,aes(lat,annual_storage,col=group)) 
 
 
 #transit by land cover boxplot/violin plots
-# summary(annual_storage_lc_2)
-# aggregate(annual_storage~group_2,median,data=annual_storage_lc_2)
-# unique(annual_storage_lc_2$group_2)
 
-#reorder by median transit
-level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
-                 'Evergreen broadleaf forest','Grassland',
-                 'Mixed forest','Evergreen needleleaf forest',
-                 'Shrubland','Deciduous needleleaf forest')
+#reorder by median transit (in case you need again)
+# level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
+#                  'Evergreen broadleaf forest','Grassland',
+#                  'Mixed forest','Evergreen needleleaf forest',
+#                  'Shrubland','Deciduous needleleaf forest')
+
+#summary(annual_turnover_lc)
 
 #plot
 boxplot_annual_storage <- ggplot(annual_storage_lc_95,aes(x=factor(group_2,level=level_order),
                                                           y=annual_storage,
                                                           color=annual_storage)) +
-  geom_hline(yintercept = 3.4) + #global median
-  scale_color_scico('Water storage (mm)',palette = 'batlow',direction=-1) +
+  geom_hline(yintercept = 3.58) + #global median
+  scale_color_scico(bquote('Water storage'~(mm/m^2)),palette = 'batlow',direction=-1) +
   geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1) +
   geom_boxplot(width=.1) +
-  ylab('Aboveground water storage (mm)') +
+  ylab(bquote('Aboveground water storage'~(mm/m^2))) +
   xlab('') +
   theme(
     axis.text.x = element_text(color='black',size=8, angle=25,hjust=1),
@@ -518,7 +525,7 @@ print(plot_grid(storage_by_lat,boxplot_annual_storage,
 dev.off()
 
 
-
+rm(storage_by_lat,boxplot_annual_storage,storage_by_latitude)
 
 
 #-------------------------------------------------------------------------------
@@ -878,7 +885,7 @@ rm(annual_storage_summary,annual_storage_lc)
 
 
 #import ground-based water content
-ground_estimates <- read.csv('./../../../woodwater/Data/site_WC_estimates.csv')
+ground_estimates <- read.csv('./../../woodwater/Data/site_WC_estimates.csv')
 
 ground_estimates <- ground_estimates %>%
   dplyr::filter(Exclude=='No')
@@ -894,7 +901,7 @@ spdf_ground_measurement <- SpatialPointsDataFrame(coords      = coords_ground,
 
 
 #import aboveground biomass raster
-dry_biomass_only<-raster('./../../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+dry_biomass_only<-raster('./../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
 # plot(dry_biomass_only)
 # points(Lat~Long,data=ground_estimates)
 
@@ -996,7 +1003,7 @@ vod_vwc_plot <- ggplot(cbind_ground_vod,
                              'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                     labels=c('Grassland'='Grassland','Forest'='Forest',
                              'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  annotate("text", x=9, y=9.7, label= "1:1 Line") +
+  annotate("text", x=8.5, y=9.7, label= "1:1 Line") +
   annotate("text", x=10.5, y=8, label= "Slope") +
   annotate("text", x=2.25, y=10, label= "r = 0.72",size=8) +
   geom_abline(slope=1) +
@@ -1026,7 +1033,7 @@ vod_vwc_plot <- ggplot(cbind_ground_vod,
 
 #compare to other pools/estimates
 
-pools <- read.csv('./../../../Data/Pools/H2OPoolSizeEstimates.csv')
+pools <- read.csv('./../../Data/Pools/H2OPoolSizeEstimates.csv')
 head(pools)
 pools$size <- as.numeric(as.character(pools$Size..km3.))
 unique(pools$Pool)
@@ -1386,3 +1393,5 @@ dev.off()
 
 #summary(lm(annual_storage~daily_transp_annual:group,data=annual_turnover_lc))
 
+
+#-------------------------------------------------------------------------------
