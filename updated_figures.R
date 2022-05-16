@@ -5,97 +5,13 @@
 library(scico)
 library(cowplot)
 
-# note that turnover and transit time are used interchangeably in this code
+#import
 
+#annual storage and turnover
+source('annual_turnover_storage_import.r')
 
-#land cover ID
-lc_id <- read.csv('./../../Data/land_cover_nsidc_ease2/land_cover_id.csv')
-unique(lc_id$group)
-
-# annual and minimum transit time and storage data import -------
-
-#set directories
-
-#annual turnover and storage
-annual_turnover_filepath <- './../../Data/turnover_from_python/annual/land_cover_csvs/'
-annual_turnover_dir <- dir(annual_turnover_filepath, full.names = T)
-annual_turnover_dir <- annual_turnover_dir[-c(11,13,15,16,17)] #remove land classes with no data
-
-#minimum minthly turnover estimate
-minimum_turnover_filepath <- './../../Data/turnover_from_python/minimum/land_cover_csvs/'
-minimum_turnover_dir <- dir(minimum_turnover_filepath, full.names = T)
-minimum_turnover_dir <- minimum_turnover_dir[-c(11,13,15,16,17)] #remove land classes with no data
-
-#now loop through each land cover file and import. truncating by the 90th percentile for figures
-
-#annual turnover time and storage
-
-#import original LC
-annual_turnover_list <- list()
-for(i in annual_turnover_dir[1:12]) {
-  
-  #load in
-  lc <- read.csv(i)
-  
-  #filter out NA, inf, and zero values
-  lc_filtered <- lc %>%
-    dplyr::filter(lc01 != 'NA') %>%
-    dplyr::filter(annual_turnover > 0) %>%
-    dplyr::filter(annual_turnover != 'Inf')
-  
-  #get land cover ID
-  name <-
-    gsub(
-      './../../Data/turnover_from_python/annual/land_cover_csvs//landclass.','',i)
-  name <- gsub('.3856x1624.bin.nc.csv','', name)
-  lc_filtered$class_number <- as.integer(name)
-  lc_filtered <- merge(lc_filtered, lc_id, by = c('class_number'))
-  
-  
-  annual_turnover_list[[i]] <- lc_filtered
-  
-}
-
-annual_turnover_lc <- do.call('rbind', annual_turnover_list)
-rm(annual_turnover_list)
-rownames(annual_turnover_lc) <- NULL
-
-#head(annual_turnover_lc,1)
-
-
-#
-#
-
-#minimum turnover time
-
-minimum_turnover_list <- list()
-for(i in minimum_turnover_dir[1:12]){
-  
-  #load in
-  lc <- read.csv(i)
-  
-  #filter out NA, inf, and zero values
-  lc_filtered <- lc %>%
-    dplyr::filter(lc01 != 'NA') %>%
-    dplyr::filter(minimum_turnover > 0) %>%
-    dplyr::filter(minimum_turnover != 'Inf')
-  
-  #get land cover ID
-  name <-
-    gsub(
-      './../../Data/turnover_from_python/minimum/land_cover_csvs//landclass.','',i)
-  name <- gsub('.3856x1624.bin.nc.csv','', name)
-  lc_filtered$class_number <- as.integer(name)
-  lc_filtered <- merge(lc_filtered, lc_id, by = c('class_number'))
-  
-  
-  minimum_turnover_list[[i]] <- lc_filtered
-  
-}
-
-minimum_turnover_lc <- do.call('rbind',minimum_turnover_list)
-rm(minimum_turnover_list)
-rownames(minimum_turnover_lc) <- NULL
+#minimum turnover
+source('minimum_turnover_import.r')
 
 
 #-------------------------------------------------------------------------------
@@ -901,7 +817,8 @@ spdf_ground_measurement <- SpatialPointsDataFrame(coords      = coords_ground,
 
 
 #import aboveground biomass raster
-dry_biomass_only<-raster('./../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+dry_biomass_only <- raster('./../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
 # plot(dry_biomass_only)
 # points(Lat~Long,data=ground_estimates)
 
@@ -965,7 +882,7 @@ library(FNN)
 #link ground-based coordinates to vod coordinates for storage
 nn1 = get.knnx(coordinates(spdf_vod), coordinates(spdf_ground), 1)
 vector <- data.frame(nn1[1])
-vector <- vector[c(1:42),]
+vector <- vector[c(1:37),]
 spdf_vod_df <- data.frame(spdf_vod)
 new_df <- spdf_vod_df[c(vector),]
 new_df <- new_df %>%
@@ -1005,7 +922,7 @@ vod_vwc_plot <- ggplot(cbind_ground_vod,
                              'Shrubland'='Shrubland','Savanna'='Savanna')) +
   annotate("text", x=8.5, y=9.7, label= "1:1 Line") +
   annotate("text", x=10.5, y=8, label= "Slope") +
-  annotate("text", x=2.25, y=10, label= "r = 0.72",size=8) +
+  annotate("text", x=2.25, y=10, label= "r = 0.74",size=8) +
   geom_abline(slope=1) +
   #geom_text(aes(label=x),hjust=0,vjust=0) +
   xlab(bquote('Satellite-based water storage'~(mm/m^2))) +

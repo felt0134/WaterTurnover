@@ -314,8 +314,9 @@ derived_wc <- read.csv('./../../Data/water.content.try/water_content_taxonomy_gl
 herb_family<-read.csv('./../../Data/water.content.try/family.list.2.csv')
 herb_family<-subset(herb_family,Herb.=='Yes')
 family.list <- unique(herb_family$family)
-# 
 
+
+#loop through and get all herb families
 herbs.list <- list()
 
 for(i in family.list){
@@ -330,7 +331,7 @@ length(unique(herbs.list.df$SpeciesName))
 #about 300 more observations than just poa
 
 #create and save a list of mostly 'herb species' to X2 check which species are herb
-mostly.herb.list<-data.frame(unique(herbs.list.df$SpeciesName))
+mostly.herb.list <- data.frame(unique(herbs.list.df$SpeciesName))
 colnames(mostly.herb.list) <- 'Species'
 #write.csv(mostly.herb.list,'./../../../Data/Derived_Data/Land_Cover_Water_Content/mostly_herb_X2_check.csv')
 
@@ -340,7 +341,7 @@ herbx2.list <-read.csv('./../../Data/water.content.try/mostly_herb_X2_check.csv'
 herbx2.list <- subset(herbx2.list,Herbaceous.=='Yes')
 herbx2.list <- herbx2.list[c(2)]
 
-#now loop through to get X2 checked mostly herb species
+#now loop through to get X2 checked herb species
 herbx2.list <- unique(herbx2.list$Species)
 
 herbsx2.list <- list()
@@ -358,26 +359,30 @@ head(herbsx2.list.df,1)
 #take the means of each coordinate and turn into raster (do this once)
 #derived_wc_mean<-aggregate(water.content~x+y,mean,data=derived_wc)
 
-#just poa
+#just poa coordinate means
 derived_wc_poa <- derived_wc %>% filter(family=='Poaceae')
 derived_wc_mean_poa<-aggregate(water.content~x+y,mean,data=derived_wc_poa)
 head(derived_wc_mean_poa,1)
 
 
-#all herb 
+#all other herb coordinate means
 derived_wc_mean_herbs<-aggregate(water.content~x+y,mean,data=herbsx2.list.df)
 head(derived_wc_mean_herbs,1)
 
 #bind Poa and all other herbaceous species (pixel averages) to have all herb species
 derived_wc_mean <- rbind(derived_wc_mean_poa,derived_wc_mean_herbs)
 
-#final averag
+#final average in case there were overlapping pixels
 derived_wc_mean_2 <- aggregate(water.content~x+y,mean,data=derived_wc_mean)
 head(derived_wc_mean_2,1)
 plot(y~x,data=derived_wc_mean_2)
+#319 observations
 
 
-#new approach using nearest spatial points
+#new approach using nearest spatial points to the land cover estimates
+
+#import data
+source('annual_turnover_storage_import.r')
 
 #turn ground data to spdf
 coords_ground <- derived_wc_mean_2[ , c("x", "y")]   # coordinates
@@ -418,6 +423,10 @@ points(lat~lon,data=new_df,add=T,col='red')
 cbind_ground_vod_herb <- cbind(new_df,derived_wc_mean_2)
 cbind_ground_vod_herb <- cbind_ground_vod_herb %>%
   filter(group==c('Cropland','Grassland'))
+
+cbind_ground_vod_herb <- cbind_ground_vod_herb %>%
+  select(x,y,water.content,group)
+rownames(cbind_ground_vod_herb) <- NULL
 
 #create file for double checking
 write.csv(cbind_ground_vod_herb,
