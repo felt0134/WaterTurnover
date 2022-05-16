@@ -1,4 +1,3 @@
-
 # generate key derived datasets needed to estimate turnover
 
 #-------------------------------------------------------------------------------
@@ -254,12 +253,12 @@ water_content_try_lon <-  water_content_try %>%
 
 #bind the lat and lon
 lat_lon_try <- merge(water_content_try_lat,water_content_try_lon,
-        by=c('DatasetID','ObservationID','SpeciesName'))
+                     by=c('DatasetID','ObservationID','SpeciesName'))
 #head(lat_lon_try,1)
 
 #merge with water content
 lat_lon_try_water_content <- merge(lat_lon_try,water_content_try_id,
-                                    by=c('DatasetID','ObservationID','SpeciesName'))
+                                   by=c('DatasetID','ObservationID','SpeciesName'))
 #head(lat_lon_try_water_content,1)
 
 #reorder and rename columns
@@ -320,10 +319,10 @@ family.list <- unique(herb_family$family)
 herbs.list <- list()
 
 for(i in family.list){
-
+  
   herbs<-subset(derived_wc,family==i)
   herbs.list[[i]] <- herbs
-
+  
 }
 
 herbs.list.df <- do.call("rbind",herbs.list)
@@ -423,6 +422,9 @@ cbind_ground_vod_herb <- cbind_ground_vod_herb %>%
 #create file for double checking
 write.csv(cbind_ground_vod_herb,
           './../../Data/water.content.try/crop_grassland_mean_water_content.csv')
+
+
+#stopped here. This same workflow can be implemented for the other water content data we have.
 
 
 #olf approach to filter by making land cover a raster
@@ -688,7 +690,7 @@ mean_aridity <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
 #map <- raster(ncvar_get(climate_data,'p20yrs'))
 
 mean_precip <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
-                                           'p20yrs')
+                                          'p20yrs')
 
 #this is daily precip, so multipy by 365 (Purdy, A., personal Corr.)
 mean_precip <- mean_precip*365.25
@@ -711,7 +713,7 @@ writeRaster(mean_precip,'./../../../Data/Derived_data/Climate/mean_precip.tif',
 
 #re-gridded PET
 mean_pet <- raster_from_nc_expand_grid('./../../../Data/climate/aridity.nc',
-                                           'pet20yrs')
+                                       'pet20yrs')
 #plot(mean_pet)
 
 
@@ -748,7 +750,7 @@ writeRaster(temp_2,'./../../../Data/Derived_data/Climate/mean_temp_2015_2017.tif
 #maximum temp
 nc_open('./../../../Data/climate/Tmax_mean_2015_2017.nc')
 max_temp <- raster_from_nc_expand_grid('./../../../Data/climate/Tmax_mean_2015_2017.nc',
-                                   'Tmax_mean')
+                                       'Tmax_mean')
 
 plot(max_temp)
 
