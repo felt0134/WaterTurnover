@@ -48,4 +48,7 @@ rownames(annual_turnover_lc) <- NULL
 
 rm(lc_filtered,lc,name)
 
+#quick look
+quantile(annual_turnover_lc$annual_turnover,probs=c(0.05,0.5,0.95))
+
 #
