@@ -1258,26 +1258,27 @@ dev.off()
 
 
 #-------------------------------------------------------------------------------
-# storage versus transpiration across land cover types ------
+# storage versus transpiration across land cover types (clea this up) ------
 
 
 head(annual_turnover_lc,1)
 summary(annual_turnover_lc)
-
-transp_storage_plot <- ggplot(annual_turnover_lc,aes(x=daily_transp_annual,
-                                 y=annual_storage,
+?facet_wrap
+transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
+                                 x=annual_storage,
                                  color=group)) +
-  scale_y_continuous(expand=c(0,0),limits=c(0,20)) +
-  scale_x_continuous(expand=c(0,0)) +
+  #facet_wrap(~group,scales='free') + 
+  #scale_y_continuous(expand=c(0,0),limits=c(0,20)) +
+  #scale_y_continuous(expand=c(0,0)) +
   scale_color_manual(values=c('Savanna'='purple','Cropland'='darkblue',
                               'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                      labels=c('Grassland'='Grassland','Forest'='Forest',
                               'Shrubland'='Shrubland','Savanna'='Savanna')) +
   geom_abline(slope=1,size=1,color='black') +
   geom_point(size=0.05,alpha=0.025) +
-  stat_smooth(method='lm',se=F,size=1.25) +
-  xlab('Canopy transpiration (mm/day)') +
-  ylab(bquote('Aboveground water storage'~(mm/m^2))) +
+  stat_smooth(method='lm',se=F,size=0.5) +
+  ylab('Canopy transpiration (mm/day)') +
+  xlab(bquote('Aboveground water storage'~(mm/m^2))) +
   annotate("text", x=3, y=2.5, label= "1:1 Line") +
   theme(
     axis.text.x = element_text(color='black',size=15),
@@ -1289,9 +1290,9 @@ transp_storage_plot <- ggplot(annual_turnover_lc,aes(x=daily_transp_annual,
     legend.title = element_blank(),
     legend.key.size = unit(.50, 'cm'),
     legend.text = element_text(size=10),
-    legend.position = c(0.15,0.80),
+    #legend.position = c(0.55,0.80),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
-    #legend.position = 'none',
+    legend.position = 'none',
     strip.background =element_rect(fill="white"),
     strip.text = element_text(size=10),
     panel.background = element_rect(fill=NA),
@@ -1301,7 +1302,7 @@ transp_storage_plot <- ggplot(annual_turnover_lc,aes(x=daily_transp_annual,
 
 
 png(height = 2000,width=3000,res=300,
-    'manuscript_figures/storage_versus_transp.png')
+    'manuscript_figures/storage_versus_transp_3.png')
 
 print(transp_storage_plot)
 
