@@ -902,12 +902,12 @@ cbind_ground_vod <- cbind_ground_vod %>%
 cor(cbind_ground_vod$annual_storage,cbind_ground_vod$ground_vwc,method='spearman')
 #r=0.72
 summary(lm(annual_storage~ground_vwc,data=cbind_ground_vod))
-#slope = 0.58, R-squared = 0.46
+#slope = 0.66, R-squared = 0.55
 mean((cbind_ground_vod$annual_storage-cbind_ground_vod$ground_vwc))
 #bias = 0.84
 vod_ground_lm <- lm(annual_storage~ground_vwc,data=cbind_ground_vod)
 sqrt(mean(vod_ground_lm$residuals^2))
-#RMSE = 2.12
+#RMSE = 2.07
 
 vod_vwc_plot <- ggplot(cbind_ground_vod,
                        aes(annual_storage,ground_vwc,fill=group)) +
@@ -960,13 +960,12 @@ pool_means <- aggregate(Size..km3. ~ Pool,mean,data=pools)
 16500.000/1094.914 #soil water (the next highest) is 15x greater than vegetation water)
 
 vegetation_pools <- subset(pools,Pool=='Vegetation')
-barplot(size~Citation,data=vegetation_pools)
 
-mean(vegetation_pools$size)
+#mean(vegetation_pools$size)
 
 this_study <- vegetation_pools %>%
   dplyr::filter(Citation=='This study')
-str(this_study)
+#str(this_study)
 
 #pool_size <- ggplot(vegetation_pools, aes(x = size, y = reorder(Citation,size))) + 
 pool_size <- ggplot(pools, aes(y = reorder(Pool,size), x = log(size)))  +

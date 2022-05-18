@@ -1,17 +1,19 @@
 
 
+#make storage figure with vegetation pools as an inset
+
 library(grid)
 
-lc_pool_size_inset <- ggplot(lc_total_pools, aes(y = reorder(group_2,annual_storage), x = annual_storage))  +
+lc_pool_size_inset <- ggplot(lc_total_pools, aes(x = reorder(group_2,annual_storage), y = annual_storage))  +
   #geom_vline(xintercept = 1135.71) +
   stat_summary(fun='mean',geom='bar',fill='grey70',color='black') +
-  scale_x_continuous(expand=c(0,0),limits=c(0,154)) +
-  ylab('') +
+  scale_y_continuous(expand=c(0,0),limits=c(0,154)) +
+  xlab('') +
   #annotate("text", x=1450, y=2, label= "Average across studies") +
-  xlab(bquote('Pool size'~(km^3))) +
+  ylab(bquote('Pool size'~(km^3))) +
   theme(
-    axis.text.x = element_text(color='black',size=8), #, angle=25,hjust=1),
-    axis.text.y = element_text(color='black',size=6),
+    axis.text.x = element_text(color='black',size=8, angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=7),
     axis.title.x = element_text(color='black',size=8),
     axis.title.y = element_text(color='black',size=10),
     axis.ticks = element_line(color='black'),
@@ -34,7 +36,7 @@ main_panels <- plot_grid(vod_vwc_plot ,pool_size,
                          rel_widths = c(1,1.35),
                          rel_heights = c(1,1),label_size = 25)
 
-vp <- viewport(width = 0.19, height = 0.3, x = 0.90,y=0.35)
+vp <- viewport(width = 0.2, height = 0.4, x = 0.9,y=0.40)
 # y = unit(0.7, "lines"), just = c("right",
 #                                  "bottom")
 
@@ -46,7 +48,7 @@ full <- function() {
 
 
 
-png(height = 2000,width=4000,res=300,
+png(height = 2000,width=4700,res=300,
     'manuscript_figures/storage_multipanel_inset.png')
 
 full()
