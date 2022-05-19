@@ -1263,23 +1263,23 @@ dev.off()
 
 head(annual_turnover_lc,1)
 summary(annual_turnover_lc)
-?facet_wrap
+
 transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
                                  x=annual_storage,
                                  color=group)) +
   #facet_wrap(~group,scales='free') + 
-  #scale_y_continuous(expand=c(0,0),limits=c(0,20)) +
-  #scale_y_continuous(expand=c(0,0)) +
+  scale_x_continuous(expand=c(0,0),limits=c(0,21)) +
+  scale_y_continuous(expand=c(0,0)) +
   scale_color_manual(values=c('Savanna'='purple','Cropland'='darkblue',
                               'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                      labels=c('Grassland'='Grassland','Forest'='Forest',
                               'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  geom_abline(slope=1,size=1,color='black') +
+  geom_abline(slope=1,size=1,color='black',linetype="dashed") +
   geom_point(size=0.05,alpha=0.025) +
-  stat_smooth(method='lm',se=F,size=0.5) +
+  stat_smooth(method='lm',se=F,size=1) +
   ylab('Canopy transpiration (mm/day)') +
   xlab(bquote('Aboveground water storage'~(mm/m^2))) +
-  annotate("text", x=3, y=2.5, label= "1:1 Line") +
+  annotate("text", x=4, y=3, label= "1:1 Line") +
   theme(
     axis.text.x = element_text(color='black',size=15),
     axis.text.y = element_text(color='black',size=15),
@@ -1292,7 +1292,7 @@ transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
     legend.text = element_text(size=10),
     #legend.position = c(0.55,0.80),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
-    legend.position = 'none',
+    legend.position = 'top',
     strip.background =element_rect(fill="white"),
     strip.text = element_text(size=10),
     panel.background = element_rect(fill=NA),
@@ -1301,7 +1301,7 @@ transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
     axis.line.y = element_line(colour = "black"))
 
 
-png(height = 2000,width=3000,res=300,
+png(height = 2000,width=2500,res=300,
     'manuscript_figures/storage_versus_transp_3.png')
 
 print(transp_storage_plot)
@@ -1310,5 +1310,6 @@ dev.off()
 
 #summary(lm(annual_storage~daily_transp_annual:group,data=annual_turnover_lc))
 
+?geom_abline
 
 #-------------------------------------------------------------------------------
