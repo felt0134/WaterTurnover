@@ -527,8 +527,9 @@ get_land_cover_turnover_from_water_content<-function(region,x,veg){
 
 cv <- function(x){
   
-  cv.x<-sd(x)/mean(x)
-  return(cv.x)
+  cv_x <- (sd(x)/mean(x))*100
+
+   return(cv_x)
   
 }
 

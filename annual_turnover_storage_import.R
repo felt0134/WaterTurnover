@@ -48,6 +48,10 @@ rownames(annual_turnover_lc) <- NULL
 
 rm(lc_filtered,lc,name)
 
+#only consider pixels with at least 4 replicates/months of data
+annual_turnover_lc <- annual_turnover_lc %>%
+  dplyr::filter(sample_size > 3)
+
 #quick look
 quantile(annual_turnover_lc$annual_turnover,probs=c(0.05,0.5,0.95))
 

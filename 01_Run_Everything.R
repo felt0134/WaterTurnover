@@ -5,7 +5,7 @@ rm(list=ls())
 
 #load packages
 pkgs <- c("ncdf4", "raster", "rgdal", "reshape2", "sp",'dplyr','maptools','data.table',
-          'rstudioapi','ggplot2')
+          'rstudioapi','ggplot2','tidyverse')
 lapply(pkgs, library, character.only = TRUE) 
 
 # Set working directory to local directory

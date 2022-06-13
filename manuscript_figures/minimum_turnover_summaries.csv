@@ -1,0 +1,10 @@
+,cover,quantile_50,quantile_5,quantile_95,time
+1,Evergreen needleleaf forest,3.23,2.01,4.93,minimum
+2,Evergreen broadleaf forest,3.56,1.74,7.24,minimum
+3,Deciduous needleleaf forest,2.7,1.95,3.8,minimum
+4,Deciduous broadleaf forest,1.68,1.02,2.81,minimum
+5,Mixed forest,2.74,1.59,3.85,minimum
+6,Shrubland,3.16,1.14,12.55,minimum
+7,Savanna,1.62,0.85,3.32,minimum
+8,Grassland,1.48,0.57,6.45,minimum
+9,Cropland,1.16,0.37,2.71,minimum

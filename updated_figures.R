@@ -9,9 +9,18 @@ library(cowplot)
 
 #annual storage and turnover
 source('annual_turnover_storage_import.r')
+head(annual_turnover_lc,1)
+#unique(annual_turnover_lc$sample_size)
 
 #minimum turnover
 source('minimum_turnover_import.r')
+head(minimum_turnover_lc,1)
+
+minimum_turnover_lc <- merge(minimum_turnover_lc,annual_turnover_lc[c(2,3,7)],by=c('lat','lon'))
+head(minimum_turnover_lc,1)
+
+#notes
+#updated 6/13/2022 to remove pixels with less than 4 months of data
 
 
 #-------------------------------------------------------------------------------
@@ -27,9 +36,9 @@ annual_turnover_list_2 <- list()
 #annual truncate
 for(j in group_2_names){
   
-  group_2_lc <- subset(annual_turnover_lc,group_2==j)
+  group_2_lc <- subset(annual_turnover_lc,group_2 == j)
   
-  quantile_95 = quantile(group_2_lc$annual_turnover,probs=0.95) #by 95th percentile
+  quantile_95 = quantile(group_2_lc$annual_turnover,probs = 0.95) #by 95th percentile
   quantile_95 = as.numeric(quantile_95)
   
   #truncate by 90th percentile
@@ -48,9 +57,9 @@ rm(annual_turnover_list_2)
 minimum_turnover_list_2 <- list()
 for(j in group_2_names){
   
-  group_2_lc <- subset(minimum_turnover_lc,group_2==j)
+  group_2_lc <- subset(minimum_turnover_lc,group_2 == j)
   
-  quantile_95 = quantile(group_2_lc$minimum_turnover,probs=0.95)
+  quantile_95 = quantile(group_2_lc$minimum_turnover,probs = 0.95)
   quantile_95 = as.numeric(quantile_95)
   
   #truncate by 90th percentile
@@ -366,7 +375,8 @@ storage_by_lat <- ggplot(storage_by_latitude,aes(lat,annual_storage,col=group)) 
                                'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                       labels=c('Grassland'='Grassland','Forest'='Forest',
                                'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  ylab(bquote('Aboveground water storage'~(mm/m^2))) +
+  #ylab(bquote('Aboveground water storage'~(mm/m^2))) +
+  ylab('Aboveground water storage (mm)') +
   xlab('Latitude (degrees)') +
   geom_vline(xintercept = 0) +
   theme(
@@ -407,7 +417,8 @@ boxplot_annual_storage <- ggplot(annual_storage_lc_95,aes(x=factor(group_2,level
   geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1) +
   geom_boxplot(width=.1) +
-  ylab(bquote('Aboveground water storage'~(mm/m^2))) +
+  ylab('Aboveground water storage (mm)') +
+  #ylab(bquote('Aboveground water storage'~(mm/m^2))) +
   xlab('') +
   theme(
     axis.text.x = element_text(color='black',size=8, angle=25,hjust=1),
@@ -447,37 +458,8 @@ rm(storage_by_lat,boxplot_annual_storage,storage_by_latitude)
 #-------------------------------------------------------------------------------
 # summary stats of transit ------
 
-#step 1: import original LC
-annual_turnover_list <- list()
-for(i in annual_turnover_dir[1:12]) {
-  
-  #load in
-  lc <- read.csv(i)
-  
-  #filter out NA, inf, and zero values
-  lc_filtered <- lc %>%
-    dplyr::filter(lc01 != 'NA') %>%
-    dplyr::filter(annual_turnover > 0) %>%
-    dplyr::filter(annual_turnover != 'Inf')
-  
-  #get land cover ID
-  name <-
-    gsub(
-      './../../../Data/turnover_from_python/annual/land_cover_csvs//landclass.','',i)
-  name <- gsub('.3856x1624.bin.nc.csv','', name)
-  lc_filtered$class_number <- as.integer(name)
-  lc_filtered <- merge(lc_filtered, lc_id, by = c('class_number'))
-  
-  
-  annual_turnover_list[[i]] <- lc_filtered
-  
-}
-
-annual_turnover_lc <- do.call('rbind', annual_turnover_list)
-rm(annual_turnover_list)
-
+#annual turnover summary
 group_2_list <- unique(annual_turnover_lc$group_2)
-
 annual_turnover_summary_list <- list()
 for(j in group_2_list){
   
@@ -508,47 +490,20 @@ for(j in group_2_list){
   
 }
 
-
 annual_turnover_summary <- do.call('rbind',annual_turnover_summary_list)
 rm(annual_turnover_summary_list)
 rownames(annual_turnover_summary) <- NULL
 head(annual_turnover_summary,1)
 
 write.csv(annual_turnover_summary, 'manuscript_figures/annual_turnover_summaries.csv')
-rm(annual_turnover_summary,annual_turnover_lc)
+rm(annual_turnover_summary)
 
-#minimum turnover summary list
 
-#step 1
-minimum_turnover_list <- list()
-for(i in minimum_turnover_dir[1:12]){
-  
-  #load in
-  lc <- read.csv(i)
-  
-  #filter out NA, inf, and zero values
-  lc_filtered <- lc %>%
-    dplyr::filter(lc01 != 'NA') %>%
-    dplyr::filter(minimum_turnover > 0) %>%
-    dplyr::filter(minimum_turnover != 'Inf')
-  
-  #get land cover ID
-  name <-
-    gsub(
-      './../../../Data/turnover_from_python/minimum/land_cover_csvs//landclass.','',i)
-  name <- gsub('.3856x1624.bin.nc.csv','', name)
-  lc_filtered$class_number <- as.integer(name)
-  lc_filtered <- merge(lc_filtered, lc_id, by = c('class_number'))
-  
-  
-  minimum_turnover_list[[i]] <- lc_filtered
-  
-}
+#
+#
 
-minimum_turnover_lc <- do.call('rbind',minimum_turnover_list)
-rm(minimum_turnover_list)
 
-#step 2
+#minimum turnover summary
 minimum_turnover_summary_list <- list()
 for(j in group_2_list){
   
@@ -579,7 +534,6 @@ for(j in group_2_list){
   
   
 }
-
 
 minimum_turnover_summary <- do.call('rbind',minimum_turnover_summary_list)
 rm(minimum_turnover_summary_list)
@@ -720,15 +674,15 @@ write.csv(seasonal_summary, 'manuscript_figures/seasonal_summary.csv')
 # summary stats of aboveground water storage -------
 
 #set directories
-annual_storage_filepath <- './../../../Data/turnover_from_python/annual/land_cover_csvs/'
+annual_storage_filepath <- './../../Data/turnover_from_python/annual/land_cover_csvs/'
 annual_storage_dir <- dir(annual_storage_filepath, full.names = T)
-annual_storage_dir <- annual_storage_dir[-c(11,13,15,16,17)]
+annual_storage_dir <- annual_storage_dir[-c(11,13,15,16,17)] #remove land classes with no data
 
 storage_list <- list()
 for(i in annual_storage_dir[1:12]){
   
   #load in
-  lc<-read.csv(i)
+  lc <- read.csv(i)
   
   #filter out NA, inf, and zero values
   lc_filtered <- lc %>%
@@ -737,9 +691,9 @@ for(i in annual_storage_dir[1:12]){
     dplyr::filter(annual_storage != 'Inf')
   
   #get land cover ID
-  name<-gsub('./../../../Data/turnover_from_python/annual/land_cover_csvs//landclass.',
+  name <- gsub('./../../Data/turnover_from_python/annual/land_cover_csvs//landclass.',
              '', i)
-  name<-gsub('.3856x1624.bin.nc.csv',
+  name <- gsub('.3856x1624.bin.nc.csv',
              '', name)
   lc_filtered$class_number <- as.integer(name)
   lc_filtered <- merge(lc_filtered,lc_id,by=c('class_number'))
@@ -752,6 +706,11 @@ for(i in annual_storage_dir[1:12]){
 
 
 annual_storage_lc <- do.call('rbind',storage_list)
+head(annual_storage_lc,1)
+
+#filter to pixels with at least 4 months
+annual_storage_lc <- merge(annual_storage_lc,annual_turnover_lc[c(2,3,7)],by=c('lat','lon'))
+
 
 group_2_list <- unique(annual_storage_lc$group_2)
 
@@ -1258,28 +1217,28 @@ dev.off()
 
 
 #-------------------------------------------------------------------------------
-# storage versus transpiration across land cover types (clea this up) ------
+# storage versus transpiration across land cover types (maybe delete) ------
 
 
 head(annual_turnover_lc,1)
 summary(annual_turnover_lc)
-
+?log
 transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
                                  x=annual_storage,
                                  color=group)) +
   #facet_wrap(~group,scales='free') + 
-  scale_x_continuous(expand=c(0,0),limits=c(0,21)) +
+  #scale_x_continuous(expand=c(0,0),limits=c(0,21)) +
   scale_y_continuous(expand=c(0,0)) +
   scale_color_manual(values=c('Savanna'='purple','Cropland'='darkblue',
                               'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                      labels=c('Grassland'='Grassland','Forest'='Forest',
                               'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  geom_abline(slope=1,size=1,color='black',linetype="dashed") +
+  #geom_abline(slope=1,size=1,color='black',linetype="dashed") +
   geom_point(size=0.05,alpha=0.025) +
   stat_smooth(method='lm',se=F,size=1) +
   ylab('Canopy transpiration (mm/day)') +
   xlab(bquote('Aboveground water storage'~(mm/m^2))) +
-  annotate("text", x=4, y=3, label= "1:1 Line") +
+  #annotate("text", x=4, y=3, label= "1:1 Line") +
   theme(
     axis.text.x = element_text(color='black',size=15),
     axis.text.y = element_text(color='black',size=15),
@@ -1302,7 +1261,7 @@ transp_storage_plot <- ggplot(annual_turnover_lc,aes(y=daily_transp_annual,
 
 
 png(height = 2000,width=2500,res=300,
-    'manuscript_figures/storage_versus_transp_3.png')
+    'manuscript_figures/storage_versus_transp_3_log.png')
 
 print(transp_storage_plot)
 
@@ -1313,3 +1272,43 @@ dev.off()
 ?geom_abline
 
 #-------------------------------------------------------------------------------
+#CV of storage and transit ------
+
+
+
+#CV of storage by LC type
+cv_data <- read.csv('./../../Data/turnover_from_python/minimum/all_months.csv')
+cv_data <- na.omit(cv_data)
+head(cv_data,1)
+
+#Create a sample size df
+sample_size <- annual_turnover_lc %>%
+  select(lat,lon,sample_size,group_2) 
+
+rm(annual_turnover_lc)
+
+cv_data <- merge(cv_data,sample_size,by = c('lat','lon'))
+head(cv_data,1)
+
+cv_storage_lc <- cv_data %>%
+  select(group_2,transp_Wm2,VWC) %>%
+  group_by(group_2) %>%
+  summarise_all(cv) %>%
+  rename('Land cover' = 'group_2',
+         'Canopy transpiration' = 'transp_Wm2',
+         'Water storage' = 'VWC')
+
+cv_storage_lc$`Canopy transpiration` <- round(cv_storage_lc$`Canopy transpiration`,2)
+cv_storage_lc$`Water storage` <- round(cv_storage_lc$`Water storage`,2)
+
+write.csv(cv_storage_lc,'manuscript_figures/storage_transp_lc_cv.csv')
+
+
+
+
+
+
+
+
+
+
