@@ -16,6 +16,7 @@ head(annual_turnover_lc,1)
 source('minimum_turnover_import.r')
 head(minimum_turnover_lc,1)
 
+#merge together by pixel so working from same set of pixels
 minimum_turnover_lc <- merge(minimum_turnover_lc,annual_turnover_lc[c(2,3,7)],by=c('lat','lon'))
 head(minimum_turnover_lc,1)
 
@@ -366,6 +367,12 @@ rm(storage_list_2)
 
 storage_by_latitude <- aggregate(annual_storage ~ lat + group,median,data=annual_storage_lc_95)
 
+#reorder by median transit
+level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
+                 'Evergreen broadleaf forest','Grassland',
+                 'Mixed forest','Evergreen needleleaf forest',
+                 'Shrubland','Deciduous needleleaf forest')
+
 #storage by latitude
 storage_by_lat <- ggplot(storage_by_latitude,aes(lat,annual_storage,col=group)) +
   stat_smooth(data=annual_storage_lc_95,aes(lat,annual_storage),col='black',size=1) +
@@ -408,12 +415,15 @@ storage_by_lat <- ggplot(storage_by_latitude,aes(lat,annual_storage,col=group)) 
 
 #summary(annual_turnover_lc)
 
+median(annual_storage_lc_95$annual_storage)
+
 #plot
 boxplot_annual_storage <- ggplot(annual_storage_lc_95,aes(x=factor(group_2,level=level_order),
                                                           y=annual_storage,
                                                           color=annual_storage)) +
-  geom_hline(yintercept = 3.58) + #global median
-  scale_color_scico(bquote('Water storage'~(mm/m^2)),palette = 'batlow',direction=-1) +
+  geom_hline(yintercept = 3.37) + #global median
+  #scale_color_scico(bquote('Water storage'~(mm/m^2)),palette = 'batlow',direction=-1) +
+  scale_color_scico('Water storage (mm)', palette = 'batlow',direction=-1) +
   geom_jitter(size=.25,width = 0.25,height=0.2,alpha=0.1) +
   geom_violin(width=1) +
   geom_boxplot(width=.1) +
@@ -550,12 +560,12 @@ rm(minimum_turnover_summary,minimum_turnover_lc)
 
 seasonal_turnover_lc <- function(season,winter){
   
-  lc_id <- read.csv('./../../../Data/land_cover_nsidc_ease2/land_cover_id.csv')  
+  lc_id <- read.csv('./../../Data/land_cover_nsidc_ease2/land_cover_id.csv')  
   
   #set directories
   # season = 'winter'
   # winter = F
-  filepath <- paste0('./../../../Data/turnover_from_python/seasonal/land_cover_csvs/',season,
+  filepath <- paste0('./../../Data/turnover_from_python/seasonal/land_cover_csvs/',season,
                      '/')
   dir <- dir(filepath, full.names = T)
   dir <- dir[-c(11,13,15,16,17)] #remove land classes with no data
@@ -578,7 +588,7 @@ seasonal_turnover_lc <- function(season,winter){
     
     
     #get land cover ID
-    name<-gsub(paste0('./../../../Data/turnover_from_python/seasonal/land_cover_csvs/',
+    name<-gsub(paste0('./../../Data/turnover_from_python/seasonal/land_cover_csvs/',
                       season,'//landclass.'),'', i)
     name<-gsub('.3856x1624.bin.nc.csv',
                '', name)
@@ -593,6 +603,11 @@ seasonal_turnover_lc <- function(season,winter){
   
   seasonal_turnover <- do.call('rbind',seasonal_turnover_summary_list)
   rm(seasonal_turnover_summary_list)
+  
+  #merge with annual turnover dataframe so we are working with pixels
+  #with at least four months of data
+  
+  seasonal_turnover <- merge(seasonal_turnover,annual_turnover_lc[c(2,3,7)],by=c('lat','lon'))
   
   
   group_2_list <- unique(seasonal_turnover$group_2)
@@ -642,7 +657,7 @@ seasonal_turnover_lc <- function(season,winter){
 #winter
 winter_summary <- seasonal_turnover_lc('winter',winter=T)
 rownames(winter_summary) <- NULL
-#head(winter_summary)
+#head(winter_summary,1)
 
 #spring
 spring_summary <- seasonal_turnover_lc('spring',winter=F)
@@ -784,20 +799,21 @@ dry_biomass_only <- raster('./../../Data/Derived_Data/Biomass/aboveground_dry_bi
 dry_biomass_only <- dry_biomass_only/10
 
 #1000000 grams = 1 megagram
-dry_biomass_only<-dry_biomass_only*1000000
+dry_biomass_only <- dry_biomass_only*1000000
 
 #1 hectare = 10000 square meters to get g/m^2
 dry_biomass_only<-dry_biomass_only/10000
 summary(dry_biomass_only)
 
 #exctract biomass value from raster for each ground-based point coordinate
-dry_biomass <- data.frame(extract(dry_biomass_only,coords_ground))
+dry_biomass <- data.frame(raster::extract(dry_biomass_only,coords_ground))
 dry_biomass$id <- rownames(dry_biomass)
 colnames(dry_biomass) <- c('dry_biomass','id')
 
+#make ID column and trim down columns
 ground_estimates$id <- rownames(ground_estimates)
 ground_estimates_2 <- ground_estimates %>%
-  select(mean.moisture,id)
+  dplyr::select(mean.moisture,id)
 
 #merge and calculate water storage
 dry_biomass_ground_vwc <- merge(dry_biomass,ground_estimates,by=('id'))
@@ -806,11 +822,11 @@ dry_biomass_ground_vwc$ground_vwc <-
 dry_biomass_ground_vwc$ground_vwc <- dry_biomass_ground_vwc$ground_vwc*0.001
 
 #trim down columns
-colnames(dry_biomass_ground_vwc)
+#colnames(dry_biomass_ground_vwc)
 dry_biomass_ground_vwc <- dry_biomass_ground_vwc %>%
   select(Long,Lat,ground_vwc,id)
 
-#match up with VOD-based stuff
+#match up with VOD-based estimates
 
 #turn ground data to spdf
 coords_ground <- dry_biomass_ground_vwc[ , c("Long", "Lat")]   # coordinates
@@ -845,7 +861,7 @@ vector <- vector[c(1:37),]
 spdf_vod_df <- data.frame(spdf_vod)
 new_df <- spdf_vod_df[c(vector),]
 new_df <- new_df %>%
-  select(annual_storage,group,lon,lat)
+  dplyr::select(annual_storage,group,lon,lat)
 
 #combine ground=based and vod-based water storage
 spdf_ground_df <- data.frame(spdf_ground)
@@ -857,35 +873,37 @@ cbind_ground_vod <- cbind_ground_vod %>%
 #unique(cbind_ground_vod$group)
 
 #metric of relationship between ground and VOD VWC
-?cor
-cor(cbind_ground_vod$annual_storage,cbind_ground_vod$ground_vwc,method='spearman')
-#r=0.72
+
+cor.test(cbind_ground_vod$annual_storage,cbind_ground_vod$ground_vwc,method='spearman')
+#r=0.74
 summary(lm(annual_storage~ground_vwc,data=cbind_ground_vod))
 #slope = 0.66, R-squared = 0.55
 mean((cbind_ground_vod$annual_storage-cbind_ground_vod$ground_vwc))
 #bias = 0.84
 vod_ground_lm <- lm(annual_storage~ground_vwc,data=cbind_ground_vod)
 sqrt(mean(vod_ground_lm$residuals^2))
-#RMSE = 2.07
+#RMSE = 2.08
 
 vod_vwc_plot <- ggplot(cbind_ground_vod,
-                       aes(annual_storage,ground_vwc,fill=group)) +
+                       aes(ground_vwc,annual_storage,fill=group)) +
   scale_x_continuous(limits=c(0,12.9)) +
   scale_y_continuous(limits=c(0,12.9)) +
-  geom_smooth(data=cbind_ground_vod,mapping=aes(annual_storage,ground_vwc,group=2),fullrange=T,
-              method='lm',linetype='dashed',color='black',se=F,legend=F) +
+  # geom_smooth(data=cbind_ground_vod,mapping=aes(annual_storage,ground_vwc,group=2),fullrange=T,
+  #             method='lm',linetype='dashed',color='black',se=F,legend=F) +
   geom_point(size=5,pch=21) +
   scale_fill_manual(values=c('Cropland'='purple','Savanna'='darkblue',
                              'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
                     labels=c('Grassland'='Grassland','Forest'='Forest',
                              'Shrubland'='Shrubland','Savanna'='Savanna')) +
-  annotate("text", x=8.5, y=9.7, label= "1:1 Line") +
-  annotate("text", x=10.5, y=8, label= "Slope") +
+  annotate("text", x=9, y=9.8, label= "1:1 Line") +
+  #annotate("text", x=10.5, y=8, label= "Slope") +
   annotate("text", x=2.25, y=10, label= "r = 0.74",size=8) +
   geom_abline(slope=1) +
   #geom_text(aes(label=x),hjust=0,vjust=0) +
-  xlab(bquote('Satellite-based water storage'~(mm/m^2))) +
-  ylab(bquote('Ground-based water storage'~(mm/m^2))) +
+  #ylab(bquote('Satellite-based water storage'~(mm/m^2))) +
+  #xlab(bquote('Ground-based water storage'~(mm/m^2))) +
+  ylab('Satellite-based water storage (mm)') +
+  xlab('Ground-based water storage (mm)') +
   theme(
     axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
     axis.text.y = element_text(color='black',size=13),
@@ -895,7 +913,7 @@ vod_vwc_plot <- ggplot(cbind_ground_vod,
     legend.key = element_blank(),
     legend.title = element_blank(),
     legend.text = element_text(size=14),
-    legend.position = c(0.8,0.25),
+    legend.position = c(0.8,0.2),
     #legend.margin =margin(r=5,l=5,t=5,b=5),
     #legend.position = 'none',
     strip.background =element_rect(fill="white"),
@@ -919,6 +937,10 @@ pool_means <- aggregate(Size..km3. ~ Pool,mean,data=pools)
 16500.000/1094.914 #soil water (the next highest) is 15x greater than vegetation water)
 
 vegetation_pools <- subset(pools,Pool=='Vegetation')
+vegetation_pools <- vegetation_pools %>%
+  dplyr::filter(Citation != 'Bar-On 2018')
+
+log(vegetation_pools$Size..km3.)
 
 #mean(vegetation_pools$size)
 
@@ -933,7 +955,7 @@ pool_size <- ggplot(pools, aes(y = reorder(Pool,size), x = log(size)))  +
   scale_x_continuous(expand=c(0,0)) +
   #geom_errorbar(ymin=min(log(size),ymax=max(log(size)))) +
   geom_errorbar(data=vegetation_pools,mapping=aes(y=Pool,x=log(size)),
-                xmin=5,xmax=10,size=0.5,width=.25) +
+                xmin=5.98,xmax=7.8,size=0.5,width=.25) +
   geom_point(data=this_study,mapping=aes(y=Pool,x=log(size)),size=7,pch=21,fill='white') + 
   ylab('') +
   #annotate("text", x=1450, y=2, label= "Average across studies") +
@@ -976,7 +998,6 @@ dev.off()
 # calculate total amount of water in aboveground vegetation ------
 
 
-
 km_cubed_by_pixel <- aggregate(annual_storage ~
                                  lon + lat + group_2,get_km_cubed_3,
                                data=annual_turnover_lc)
@@ -984,6 +1005,7 @@ head(km_cubed_by_pixel)
 
 unique(km_cubed_by_pixel$group_2)
 
+#total amount of storage by land cover type
 lc_total_pools <- aggregate(annual_storage~group_2,sum,data=km_cubed_by_pixel)
 sum(lc_total_pools$annual_storage)
 # about 33.3 %, a third, of water (136 cubic km) is stored in evergreen broadleaf forests
@@ -1275,8 +1297,9 @@ dev.off()
 #CV of storage and transit ------
 
 
-
 #CV of storage by LC type
+
+#import very large dataframe
 cv_data <- read.csv('./../../Data/turnover_from_python/minimum/all_months.csv')
 cv_data <- na.omit(cv_data)
 head(cv_data,1)
@@ -1312,3 +1335,5 @@ write.csv(cv_storage_lc,'manuscript_figures/storage_transp_lc_cv.csv')
 
 
 
+
+#-------------------------------------------------------------------------------

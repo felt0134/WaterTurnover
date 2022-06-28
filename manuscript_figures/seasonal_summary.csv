@@ -1,0 +1,37 @@
+,cover,quantile_50,quantile_5,quantile_95,time
+4,Cropland,37.41,1.59,Inf,winter
+13,Cropland,3.86,1.59,17.31,spring
+22,Cropland,1.71,0.76,7.59,summer
+31,Cropland,6.32,1.21,23.38,fall
+6,Deciduous broadleaf forest,31.3,1.55,618.04,winter
+15,Deciduous broadleaf forest,3.95,2.25,7.81,spring
+24,Deciduous broadleaf forest,2.39,1.16,8.02,summer
+33,Deciduous broadleaf forest,4.2,1.91,12.65,fall
+9,Deciduous needleleaf forest,Inf,Inf,Inf,winter
+18,Deciduous needleleaf forest,23.1,10.12,34.55,spring
+27,Deciduous needleleaf forest,3.66,2.62,4.69,summer
+36,Deciduous needleleaf forest,68.59,43.25,113.64,fall
+2,Evergreen broadleaf forest,4.32,2.03,8.54,winter
+11,Evergreen broadleaf forest,5.99,2.51,10.73,spring
+20,Evergreen broadleaf forest,5.82,2.74,11.45,summer
+29,Evergreen broadleaf forest,5.15,2.26,10.23,fall
+7,Evergreen needleleaf forest,Inf,81,Inf,winter
+16,Evergreen needleleaf forest,11.5,6.44,30.36,spring
+25,Evergreen needleleaf forest,3.87,2.33,5.8,summer
+34,Evergreen needleleaf forest,37.11,11.63,118.58,fall
+5,Grassland,76.66,1.39,Inf,winter
+14,Grassland,5.12,1.32,77.73,spring
+23,Grassland,2.45,0.9,34.35,summer
+32,Grassland,10,1.34,105.52,fall
+8,Mixed forest,Inf,14.74,Inf,winter
+17,Mixed forest,8.31,4.29,18.23,spring
+26,Mixed forest,3.17,1.86,4.48,summer
+35,Mixed forest,21.17,5.14,69.97,fall
+1,Savanna,2.22,1.14,65.57,winter
+10,Savanna,2.46,1.43,11.65,spring
+19,Savanna,3.54,1.46,21.36,summer
+28,Savanna,2.6,1.31,34.02,fall
+3,Shrubland,12.28,1.41,Inf,winter
+12,Shrubland,12.69,2.26,106.34,spring
+21,Shrubland,6.04,2.29,111.48,summer
+30,Shrubland,32.45,2.2,228.45,fall
