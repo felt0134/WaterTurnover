@@ -253,6 +253,8 @@ level_order <- c("Savanna", "Cropland", "Deciduous broadleaf forest",
                  'Mixed forest','Evergreen needleleaf forest',
                  'Shrubland','Deciduous needleleaf forest')
 
+#quantile(annual_turnover_lc$annual_turnover,probs=c(0.05,0.5,0.95))
+
 #plot
 annual_turnover_boxplot <- ggplot(annual_turnover_lc_95,aes(x=factor(group_2,level=level_order),
                                                             y=annual_turnover,
@@ -285,9 +287,10 @@ annual_turnover_boxplot <- ggplot(annual_turnover_lc_95,aes(x=factor(group_2,lev
     axis.line.y = element_line(colour = "black"))
 
 
-
+(3.5-5.2)/5.2
 #min transit by land cover boxplot/violin plots
 summary(minimum_turnover_lc)
+quantile(minimum_turnover_lc$minimum_turnover,probs=c(0.05,0.5,0.95))
 
 #plot
 minimum_turnover_boxplot <- ggplot(minimum_turnover_lc_95,aes(x=factor(group_2,level=level_order),
@@ -1008,9 +1011,9 @@ unique(km_cubed_by_pixel$group_2)
 #total amount of storage by land cover type
 lc_total_pools <- aggregate(annual_storage~group_2,sum,data=km_cubed_by_pixel)
 sum(lc_total_pools$annual_storage)
-# about 33.3 %, a third, of water (136 cubic km) is stored in evergreen broadleaf forests
-148.56/397.24
-
+148.55/396.14
+# about 37 %, a third, of water (136 cubic km) is stored in evergreen broadleaf forests
+(148.55 +74.6)/396.14
 
 #quick plot of how total storage varies by land cover type
 lc_pool_size <- ggplot(lc_total_pools, aes(y = reorder(group_2,annual_storage), x = annual_storage))  +
@@ -1205,8 +1208,8 @@ compare_transit <- ggplot(seasonal_turnover_comp_df,aes(x= turnover,
                               'Shrubland'='Shrubland','Savanna'='Savanna')) +
   geom_abline(slope=1,size=1,color='black') +
   geom_point(size=7,alpha=0.7) +
-  xlab('Statellite-based transit (days)') +
-  ylab('Istotope-based transit (days)') +
+  ylab('Satellite-based transit (days)') +
+  xlab('Istotope-based transit (days)') +
   annotate("text", x=11, y=9.5, label= "1:1 Line") +
   theme(
     axis.text.x = element_text(color='black',size=15),

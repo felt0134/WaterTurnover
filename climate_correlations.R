@@ -7,7 +7,6 @@ source('annual_turnover_storage_import.r')
 
 head(annual_turnover_lc)
 
-
 group_2_names <- unique(annual_turnover_lc$group_2)
 
 #import climate data
@@ -17,8 +16,7 @@ climate_data$mean_precipitation <- climate_data$mean_precipitation*365
 climate_data$mean_pet <- climate_data$mean_pet*365
 head(climate_data)
 
-cor(climate_data$mean_pet,climate_data$mean_precipitation)
-
+summary(climate_data)
 
 #loop through each land cover to get correlations with mean climate
 climate_cor_lc_list <- list()
@@ -47,6 +45,12 @@ for(j in group_2_names){
                           method='spearman',exact=FALSE)
   aridity_pval <- cor_aridity$p.value
   aridity_cor <- cor_aridity$estimate
+  
+  #cor with temp
+  cor_temp <- cor.test(climate_data_lc$annual_turnover,climate_data_lc$mean_temp,
+                          method='spearman',exact=FALSE)
+  temp_pval <- cor_temp$p.value
+  temp_cor <- cor_temp$estimate
   
   climate_val <- c('Potential Evapotranspiration','Precipitation','Aridity')
   cor <- c(pet_cor,ppt_cor,aridity_cor)
