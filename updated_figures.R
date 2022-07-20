@@ -1340,3 +1340,183 @@ write.csv(cv_storage_lc,'manuscript_figures/storage_transp_lc_cv.csv')
 
 
 #-------------------------------------------------------------------------------
+#correlate raw VOD with ground-based storage in kg/m^2 ------
+
+
+#import ground-based water content
+ground_estimates <- read.csv('./../../woodwater/Data/site_WC_estimates.csv')
+
+ground_estimates <- ground_estimates %>%
+  dplyr::filter(Exclude=='No')
+
+coords_ground <- ground_estimates[ , c("Long", "Lat")]   # coordinates
+data   <- ground_estimates[,c("Land.Cover.Type","mean.moisture")]      # data
+crs    <- CRS('+proj=longlat +datum=WGS84 +no_defs') # proj4string of coords
+
+# make the SpatialPointsDataFrame object
+spdf_ground_measurement <- SpatialPointsDataFrame(coords      = coords_ground,
+                                                  data        = data, 
+                                                  proj4string = crs)
+
+
+#import aboveground biomass raster
+dry_biomass_only <- raster('./../../Data/Derived_Data/Biomass/aboveground_dry_biomass_density_aggregate_30X.tif')
+
+# plot(dry_biomass_only)
+# points(Lat~Long,data=ground_estimates)
+
+dry_biomass_only <- dry_biomass_only/10
+
+#1000000 grams = 1 megagram
+dry_biomass_only <- dry_biomass_only*1000000
+
+#1 hectare = 10000 square meters to get g/m^2
+dry_biomass_only <- dry_biomass_only/10000
+summary(dry_biomass_only)
+
+#extract biomass value from raster for each ground-based point coordinate
+dry_biomass <- data.frame(raster::extract(dry_biomass_only,coords_ground))
+dry_biomass$id <- rownames(dry_biomass)
+colnames(dry_biomass) <- c('dry_biomass','id')
+
+#make ID column and trim down columns
+ground_estimates$id <- rownames(ground_estimates)
+ground_estimates_2 <- ground_estimates %>%
+  dplyr::select(mean.moisture,id)
+
+#merge and calculate water storage
+dry_biomass_ground_vwc <- merge(dry_biomass,ground_estimates,by=('id'))
+dry_biomass_ground_vwc$ground_vwc <- 
+  dry_biomass_ground_vwc$dry_biomass*dry_biomass_ground_vwc$mean.moisture
+
+#divide by 1000 to get kg/^2
+dry_biomass_ground_vwc$ground_vwc <- dry_biomass_ground_vwc$ground_vwc/1000
+
+dry_biomass_ground_vwc <- dry_biomass_ground_vwc %>%
+  dplyr::select(Long,Lat,ground_vwc,id)
+
+#match up with VOD-based estimates
+
+#turn ground data to spdf
+coords_ground <- dry_biomass_ground_vwc[ , c("Long", "Lat")]   # coordinates
+data_ground   <- data.frame(dry_biomass_ground_vwc[c(3:4)])          # data
+crs    <- CRS('+proj=longlat +datum=WGS84 +no_defs') # proj4string of coords
+
+spdf_ground <- SpatialPointsDataFrame(coords      = coords_ground,
+                                      data        = data_ground, 
+                                      proj4string = crs)
+
+#turn vod raster data to spatial points DF
+annual_strorage_2 <- annual_turnover_lc %>%
+  dplyr::select(lon,lat,annual_storage,category,group,group_2)
+rownames(annual_strorage_2) <- NULL
+
+#import beta dataframe to convert storage back to VOD
+beta_df <- read.csv('./../../Data/land_cover_nsidc_ease2/land_cover_id.csv')
+head(beta_df)
+
+beta_df <- beta_df %>%
+  dplyr::select(category,beta)
+
+head(annual_strorage_2,1)
+
+#calculate VOD from storage and beta
+annual_strorage_2 <- merge(annual_strorage_2,beta_df,by = ('category'))
+annual_strorage_2$vod <- annual_strorage_2$annual_storage*annual_strorage_2$beta
+
+#select/reorder columns
+annual_strorage_2 <- annual_strorage_2 %>%
+  dplyr::select(lon,lat,vod,group)
+
+# prepare coordinates, data, and proj4string
+coords_vod <- annual_strorage_2[ , c("lon", "lat")]   # coordinates
+data_vod   <- annual_strorage_2[ , 3:4]          # data
+
+# make the SpatialPointsDataFrame object
+spdf_vod <- SpatialPointsDataFrame(coords      = coords_vod,
+                                   data        = data_vod, 
+                                   proj4string = crs)
+
+
+library(FNN)
+
+#link ground-based coordinates to vod coordinates for storage
+nn1 = get.knnx(coordinates(spdf_vod), coordinates(spdf_ground), 1)
+vector <- data.frame(nn1[1])
+vector <- vector[c(1:37),]
+spdf_vod_df <- data.frame(spdf_vod)
+new_df <- spdf_vod_df[c(vector),]
+new_df <- new_df %>%
+  dplyr::select(vod,group,lon,lat)
+
+#combine ground=based and vod-based water storage
+spdf_ground_df <- data.frame(spdf_ground)
+cbind_ground_vod <- cbind(new_df,dry_biomass_ground_vwc)
+cbind_ground_vod <- cbind_ground_vod %>%
+  dplyr::filter(!group==c('Water'),
+                !group==c('Urban')) #don't want these two
+
+#unique(cbind_ground_vod$group)
+
+#metric of relationship between ground and VOD VWC
+
+cor.test(cbind_ground_vod$vod,cbind_ground_vod$ground_vwc,method='spearman')
+#r=0.74
+summary(lm(vod~ground_vwc,data=cbind_ground_vod))
+#slope = 0.069, R-squared = 0.55
+mean((cbind_ground_vod$annual_storage-cbind_ground_vod$ground_vwc))
+#bias = 0.84
+vod_ground_lm <- lm(annual_storage~ground_vwc,data=cbind_ground_vod)
+sqrt(mean(vod_ground_lm$residuals^2))
+#RMSE = 2.08
+
+vod_vwc_plot_2 <- ggplot(cbind_ground_vod,
+                       aes(ground_vwc,vod,fill=group)) +
+  #scale_x_continuous(limits=c(0,12.9)) +
+  #scale_y_continuous(limits=c(0,12.9)) +
+  geom_smooth(data=cbind_ground_vod,mapping=aes(ground_vwc,vod,group=2),fullrange=T,
+              method='lm',linetype='dashed',color='black',se=F) +
+  geom_point(size=5,pch=21) +
+  scale_fill_manual(values=c('Cropland'='purple','Savanna'='darkblue',
+                             'Grassland'='lightblue','Forest'='orange','Shrubland'='red'),
+                    labels=c('Grassland'='Grassland','Forest'='Forest',
+                             'Shrubland'='Shrubland','Savanna'='Savanna')) +
+  #annotate("text", x=9, y=9.8, label= "1:1 Line") +
+  annotate("text", x=3, y=1, label= "Slope = 0.07") +
+  #annotate("text", x=2.25, y=10, label= "r = 0.74",size=8) +
+  #geom_abline(slope=1) +
+  #geom_text(aes(label=x),hjust=0,vjust=0) +
+  #ylab(bquote('Satellite-based water storage'~(mm/m^2))) +
+  xlab(bquote('Ground-based water storage'~(kg/m^2))) +
+  #ylab('Satellite-based water storage (mm)') +
+  ylab('Vegetation optical depth') +
+  theme(
+    axis.text.x = element_text(color='black',size=13), #angle=25,hjust=1),
+    axis.text.y = element_text(color='black',size=13),
+    axis.title.x = element_text(color='black',size=19),
+    axis.title.y = element_text(color='black',size=19),
+    axis.ticks = element_line(color='black'),
+    legend.key = element_blank(),
+    legend.title = element_blank(),
+    legend.text = element_text(size=14),
+    legend.position = c(0.8,0.2),
+    #legend.margin =margin(r=5,l=5,t=5,b=5),
+    #legend.position = 'none',
+    strip.background =element_rect(fill="white"),
+    strip.text = element_text(size=10),
+    panel.background = element_rect(fill=NA),
+    panel.border = element_blank(), #make the borders clear in prep for just have two axes
+    axis.line.x = element_line(colour = "black"),
+    axis.line.y = element_line(colour = "black"))
+
+
+png(height = 2000,width=2500,res=300,
+    'manuscript_figures/vod_vwc_2.png')
+
+vod_vwc_plot_2
+
+dev.off()
+
+
+
+

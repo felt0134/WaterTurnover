@@ -52,9 +52,9 @@ for(j in group_2_names){
   temp_pval <- cor_temp$p.value
   temp_cor <- cor_temp$estimate
   
-  climate_val <- c('Potential Evapotranspiration','Precipitation','Aridity')
-  cor <- c(pet_cor,ppt_cor,aridity_cor)
-  pval <- c(pet_pval,ppt_pval,aridity_pval)
+  climate_val <- c('Potential Evapotranspiration','Precipitation','Aridity','Temperature')
+  cor <- c(pet_cor,ppt_cor,aridity_cor,temp_cor)
+  pval <- c(pet_pval,ppt_pval,aridity_pval,temp_pval)
   
   climate_cor_df <- data.frame(climate_val,cor,pval)
   
@@ -77,7 +77,7 @@ head(climate_cor_lc_df,1)
 
 climate_corrlations <- ggplot(climate_cor_lc_df,aes(x=factor(land_cover,level=level_order),
                               y=cor)) +
-  facet_wrap(~climate_val) + 
+  facet_wrap(~climate_val,ncol=2) + 
   stat_summary(fun='mean',geom='bar') +
   ylab('Corrleation with annual transit time') +
   # scale_fill_manual(values=c('Savanna'='purple','Cropland'='darkblue',
